@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <title>Student - Asset Borrowing System</title>
+    <link rel="stylesheet" href="stylestudent.css">
+    <style>
+        /* Reset default styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Main Content */
+        .container {
+            width: auto;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #E0E0E0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+
+        thead {
+            background-color: #2c3e50;
+            color: white;
+        }
+
+        th {
+            font-weight: 600;
+        }
+
+        td {
+            background-color: #fff;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #F5F5F5;
+        }
+
+        /* Motorcycle image styling */
+        .motorcycle-img {
+            width: 100px;
+            height: auto;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        /* Status badges */
+        .status {
+            padding: 8px 15px;
+            border-radius: 25px; /* Rounded like the "PENDING" badge */
+            font-weight: bold; /* Bold text */
+            text-transform: uppercase; /* Uppercase text */
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
+        .approved {
+            background-color: #28a745; /* Green background */
+            color: white;
+        }
+
+        .pending {
+            background-color: #ffc107; /* Yellow background like the "PENDING" badge */
+            color: black; /* Black text */
+        }
+
+        .disapproved {
+            background-color: #dc3545; /* Red background */
+            color: white;
+        }
+
+        .borrowed {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .returned {
+            background-color: #6c757d;
+            color: white;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Navbar (Only Student-related links) -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/student/motorcycles">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/request">Booking</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/check">Booking Status</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display" id="usernameDisplay"></span>
+            <button class="logout" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/bookingStatus.png" alt="motorbike" style="height: 25px;">
+            <h4 class="mb-0 mx-2"><i class="fas fa-search"></i>Motorcycle Booking Status</h4>
+        </div>
+    
+        <div class="px-3 d-flex justify-content-center">
+            <table class="text-center mb-5 mt-5">
+                <thead>
+                    <tr>
+                        <th>Product</th> <!-- Changed to match historystudent.html -->
+                        <th>Product Name</th> <!-- Changed to match historystudent.html -->
+                        <th>Date</th> <!-- Split Booking Time into Date -->
+                        <th>Return</th> <!-- Split Booking Time into Return -->
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingRequestsTable">
+                    <!-- Rows will be dynamically populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+    
+    <script>
+        // Fetch the logged-in user's username
+        async function fetchUserInfo() {
+            try {
+                console.log('Fetching user info from /user');
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                console.log('User info response status:', response.status);
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/views/Login.html';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                console.log('User info:', result);
+                return result;
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return null;
+            }
+        }
+
+        // Display the username in the navbar
+        async function displayUsername() {
+            const userInfo = await fetchUserInfo();
+            if (userInfo) {
+                const usernameDisplay = document.getElementById('usernameDisplay');
+                usernameDisplay.textContent = `Welcome, ${userInfo.username}!`;
+            }
+        }
+
+        // Fetch pending requests for the logged-in user
+        async function fetchPendingRequests() {
+            try {
+                console.log('Fetching pending requests from /student/pending-requests');
+                const response = await fetch('http://localhost:3000/student/pending-requests', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Response error:', errorText);
+                    throw new Error(`Failed to fetch pending requests: ${response.status} - ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('Fetched pending requests:', result);
+                if (result.success) {
+                    populatePendingRequests(result.requests);
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to load pending requests.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching pending requests:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load pending requests. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Populate the table with pending requests
+        function populatePendingRequests(requests) {
+            const tableBody = document.getElementById('pendingRequestsTable');
+            tableBody.innerHTML = ''; // Clear existing rows
+
+            if (requests.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5">No pending requests found.</td></tr>'; // Updated colspan to 5
+                return;
+            }
+
+            requests.forEach(request => {
+                const row = document.createElement('tr');
+
+                // Product (Image)
+                const productCell = document.createElement('td');
+                const img = document.createElement('img');
+                img.src = `../img/motorcycle/${request.motorcycle_img}`; // Construct the image URL
+                img.alt = request.motorcycle_name;
+                img.className = 'motorcycle-img';
+                productCell.appendChild(img);
+                row.appendChild(productCell);
+
+                // Product Name
+                const productNameCell = document.createElement('td');
+                productNameCell.textContent = request.motorcycle_name;
+                row.appendChild(productNameCell);
+
+                // Date (Borrow Date)
+                const dateCell = document.createElement('td');
+                const borrowDate = new Date(request.borrow_date).toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'numeric',
+                    year: 'numeric'
+                });
+                dateCell.textContent = borrowDate;
+                row.appendChild(dateCell);
+
+                // Return (Return Date)
+                const returnCell = document.createElement('td');
+                const returnDate = new Date(request.return_date).toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'numeric',
+                    year: 'numeric'
+                });
+                returnCell.textContent = returnDate;
+                row.appendChild(returnCell);
+
+                // Status
+                const statusCell = document.createElement('td');
+                const statusSpan = document.createElement('span');
+                statusSpan.className = `status ${request.status}`;
+                statusSpan.textContent = request.status.toUpperCase(); // Match historystudent.html (uppercase)
+                statusCell.appendChild(statusSpan);
+                row.appendChild(statusCell);
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                console.log('Logging out');
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                console.log('Logout response status:', response.status);
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Load username and pending requests on page load
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername(); // Fetch and display the username
+            await fetchPendingRequests(); // Fetch and display pending requests
+        });
+    </script>
+</body>
+</html>

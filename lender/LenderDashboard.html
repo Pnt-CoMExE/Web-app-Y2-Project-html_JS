@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <title>Lender Dashboard - Asset Borrowing System</title>
+    <link rel="stylesheet" href="stylelender.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- Font Awesome for icons -->
+
+    <style>
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 250px);
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+            font-weight: bold;
+        }
+
+        .free {
+            background: #12d0ff;
+        }
+
+        .pending {
+            background: #ffc107;
+        }
+
+        .reserved {
+            background: #82d300;
+        }
+
+        .disable {
+            background: #ff6251e5;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar (With Username Display) -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/lender/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/lender/requests">Requests</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/lender/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/lender/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display text-white" id="usernameDisplay">Welcome, Guest!</span>
+            <button class="logout" onclick="logout()">Log out</a></button>
+        </div>
+    </nav>
+
+    <!--Dashboard-->
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/dashboard.png" alt="motorbike" style="height: 25px;">
+            <h4 class="mb-0 mx-2"><i></i>Dashboard</h4>
+        </div>
+
+        <div class="row mt-3">
+            <div class="row m-1 col-md-8 mx-3" id="motorcycleList"></div>
+
+            <div class="col-md-3">
+                <div class="card p-0">
+                    <div class="card-header text-white d-flex bg-gradient-dark">
+                        <img src="../img/icon/dashboard2.png" alt="motorbike" style="height: 25px;">
+                        <h4 class="mb-0 mx-2"><i></i>Dashboard status</h4>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Available.png" alt="available" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/motorcycle_6839867_1.png" alt="motorbike" style="height: 25px;">
+                            <h5 class="mx-3"><b>Available :</b><span id="Available" class="mx-2">4</span></h5>
+                        </div>
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Pending.png" alt="pending" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/document_17081186.png" alt="motorbike" style="height: 25px;">
+                            <h5 class="mx-3"><b>Pending :</b><span id="Pending" class="mx-2">1</span></h5>
+                        </div>
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Borrowed.png" alt="borrowed" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/calendar_8585121.png" alt="motorbike" style="height: 25px;">
+                            <h5 class="mx-3"><b>Borrowed :</b><span id="Borrowed" class="mx-2">4</span></h5>
+                        </div>
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Disabled.png" alt="disabled" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/cross_14875490.png" alt="motorbike" style="height: 25px;">
+                            <h5 class="mx-3"><b>Disabled :</b><span id="Disabled" class="mx-2">1</span></h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!--Dashboard-->
+
+    <script>
+        // Fetch and display username
+        async function fetchUserInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                return { username: result.username, userId: result.userId, role: result.role };
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+                return null;
+            }
+        }
+
+        async function displayUsername() {
+            const user = await fetchUserInfo();
+            if (user) {
+                document.getElementById('usernameDisplay').textContent = `Welcome, ${user.username}!`;
+                return user;
+            }
+            return null;
+        }
+
+        // Fetch and display motorcycles and dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('http://localhost:3000/lender/dashboard-data', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    throw new Error(`Network response was not ok: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayMotorcycles(data.motorcycles);
+                updateDashboardStatus(data.statusCounts);
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load dashboard data. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+            }
+        }
+
+        function displayMotorcycles(motorcycles) {
+            const list = document.getElementById("motorcycleList");
+            list.innerHTML = "";
+            motorcycles.forEach(bike => {
+                list.innerHTML += `
+                    <div class="col-md-3">
+                        <div class="card p-3 mb-3 shadow">
+                            <h5>${bike.model}</h5>
+                            <img src="../img/motorcycle/${bike.img}" alt="${bike.img}">
+                            <div class="d-flex">
+                            <p>Status: <strong>${bike.status}</strong></p>
+                            <img src="../img/icon/${bike.status}.png" alt="${bike.status}" class="mx-1" style="height: 13px; width: 13px; margin-top: 6px; ">
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function updateDashboardStatus(statusCounts) {
+            document.getElementById('Available').textContent = statusCounts.available || 0;
+            document.getElementById('Pending').textContent = statusCounts.pending || 0;
+            document.getElementById('Borrowed').textContent = statusCounts.borrowed || 0;
+            document.getElementById('Disabled').textContent = statusCounts.disabled || 0;
+        }
+
+        // Logout function
+        function logout() {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'You will be logged out and redirected to the login page.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Logout!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('http://localhost:3000/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    }).then(response => {
+                        if (response.ok) {
+                            Swal.fire({
+                                title: 'Logged Out!',
+                                text: 'Redirecting to login page...',
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href = "/views/Login.html";
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error!',
+                                text: 'Failed to log out.',
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    }).catch(error => {
+                        console.error('Logout error:', error);
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'An error occurred during logout.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    });
+                }
+            });
+        }
+
+        // Load content when page is ready
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername();
+            await loadDashboardData();
+        });
+
+        // Custom CSS for SweetAlert
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .animated-swal {
+                border-radius: 15px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            .swal2-html-container {
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .swal2-confirm, .swal2-cancel {
+                border-radius: 10px !important;
+                padding: 8px 20px !important;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>

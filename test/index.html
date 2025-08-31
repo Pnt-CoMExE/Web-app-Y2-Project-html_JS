@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Motorcycle</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        .motorcycle-list { margin-top: 20px; }
+        .card-img-top { max-height: 200px; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Add New Motorcycle</h2>
+        <form id="uploadForm">
+            <div class="mb-3">
+                <label for="name" class="form-label">Motorcycle Name:</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="price" class="form-label">Price (฿/Day):</label>
+                <input type="number" class="form-control" id="price" name="price" step="0.01" required>
+            </div>
+            <div class="mb-3">
+                <label for="registration" class="form-label">Registration:</label>
+                <input type="text" class="form-control" id="registration" name="registration" required>
+            </div>
+            <div class="mb-3">
+                <label for="image" class="form-label">Upload Photo:</label>
+                <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload Motorcycle</button>
+        </form>
+
+        <div class="row motorcycle-list" id="motorcycleList"></div>
+    </div>
+
+    <script>
+        let motorcycles = [];
+
+        // Handle form submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this); // Includes all form fields and file
+
+            try {
+                const response = await fetch('http://localhost:3000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const motorcycle = await response.json();
+                motorcycles.push(motorcycle);
+                displayMotorcycles();
+                this.reset();
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Upload failed!');
+            }
+        });
+
+        // Display motorcycles
+        function displayMotorcycles() {
+            const list = document.getElementById('motorcycleList');
+            list.innerHTML = '';
+            motorcycles.forEach(motorcycle => {
+                const card = `
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <img src="${motorcycle.image_path}" class="card-img-top" alt="${motorcycle.name}">
+                            <div class="card-body">
+                                <h5 class="card-title">${motorcycle.name}</h5>
+                                <p class="card-text">Price: ${motorcycle.price}฿/Day</p>
+                                <p class="card-text">Registration: ${motorcycle.registration}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', card);
+            });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

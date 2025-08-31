@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student - Asset Borrowing System</title>
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="stylestudent.css">
+    <style>
+        /* Ensure modal is on top and wider */
+        .modal {
+            z-index: 1055; /* Higher than most elements */
+        }
+        .modal-dialog {
+            max-width: 600px; /* Increase modal width */
+        }
+        .modal-content {
+            padding: 20px;
+        }
+        .modal-body input {
+            width: 100%; /* Ensure inputs take full width */
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/student/motorcycles">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/request">Booking</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/check">Booking Status</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display" id="usernameDisplay"></span>
+            <button class="logout" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/booking.png" alt="motorbike" style="height: 25px;">
+            <h4 class="mb-0 mx-2"><i class="fas fa-search"></i>Booking Motorcycle</h4>
+        </div>
+
+        <div class="collection-container m-5"></div>
+    </section>
+
+    <!-- Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookingModalLabel">Booking Motorcycle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookingForm">
+                        <div class="mb-3">
+                            <label for="motorcycleId" class="form-label">Motorcycle ID</label>
+                            <input type="text" class="form-control" id="motorcycleId" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="motorcycleModel" class="form-label">Model</label>
+                            <input type="text" class="form-control" id="motorcycleModel" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pricePerDay" class="form-label">Price per Day</label>
+                            <input type="text" class="form-control" id="pricePerDay" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="borrowDate" class="form-label">Borrow Date</label>
+                            <input type="date" class="form-control" id="borrowDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="returnDate" class="form-label">Return Date</label>
+                            <input type="date" class="form-control" id="returnDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="totalPrice" class="form-label">Total Price</label>
+                            <input type="text" class="form-control" id="totalPrice" readonly>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Booking</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch the logged-in user's username
+        async function fetchUserInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                return result.username;
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return null;
+            }
+        }
+
+        // Display the username in the navbar
+        async function displayUsername() {
+            const username = await fetchUserInfo();
+            if (username) {
+                const usernameDisplay = document.getElementById('usernameDisplay');
+                usernameDisplay.textContent = `Welcome, ${username}!`;
+            }
+        }
+
+        async function fetchMotorcycles() {
+            try {
+                const response = await fetch('http://localhost:3000/request', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/views/Login.html';
+                        });
+                        return [];
+                    }
+                    throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+                }
+
+                const motorcycles = await response.json();
+                console.log('Fetched motorcycles:', motorcycles);
+                return motorcycles;
+            } catch (error) {
+                console.error("Error fetching motorcycles:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load motorcycles. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return [];
+            }
+        }
+
+        async function loadMotorcycles() {
+            const motorcycles = await fetchMotorcycles();
+            if (motorcycles.length === 0) {
+                console.log('No motorcycles found');
+                return;
+            }
+
+            const container = document.querySelector(".collection-container");
+            container.innerHTML = "";
+
+            motorcycles.forEach(motorcycle => {
+                if (motorcycle.status === 'available') {
+                    const cardHTML = `
+                        <div class="collection-cycle-item card shadow">
+                            <img src="../img/motorcycle/${motorcycle.img}" alt="${motorcycle.model}">
+                            <div class="cycle-info-container">
+                                <div class="cycle-info">
+                                    <div class="cycle-price">
+                                        <h5>${motorcycle.price}฿</h5>
+                                        <h6>/Day</h6>
+                                    </div>
+                                    <div class="cycle-register">
+                                        <i class="fa-solid fa-register-dot">
+                                            <h6>${motorcycle.Register}</h6>
+                                        </i>
+                                    </div>
+                                </div>
+                                <h2 class="my-1">${motorcycle.model}</h2>
+                                <div class="d-flex justify-content-between">
+                                    <p></p>
+                                    <button class="btn-2 btn-cycle" id="btn-status${motorcycle.motorcycle_id}" 
+                                        data-motorcycle-id="${motorcycle.motorcycle_id}" 
+                                        data-price="${motorcycle.price}" 
+                                        data-model="${motorcycle.model}">Book now</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML("beforeend", cardHTML);
+                }
+            });
+
+            attachEventListeners();
+        }
+
+        function calculateTotalPrice() {
+            const borrowDateInput = document.getElementById('borrowDate');
+            const returnDateInput = document.getElementById('returnDate');
+            const pricePerDayInput = document.getElementById('pricePerDay');
+            const totalPriceInput = document.getElementById('totalPrice');
+
+            const borrowDate = new Date(borrowDateInput.value);
+            const returnDate = new Date(returnDateInput.value);
+            const pricePerDay = parseFloat(pricePerDayInput.value.replace('฿', ''));
+
+            if (borrowDate && returnDate && !isNaN(pricePerDay)) {
+                // Calculate the number of days
+                const timeDiff = returnDate - borrowDate;
+                const days = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
+
+                if (days > 0) {
+                    const totalPrice = pricePerDay * days;
+                    totalPriceInput.value = `${totalPrice.toFixed(2)}฿`;
+                } else {
+                    totalPriceInput.value = '0.00฿';
+                }
+            } else {
+                totalPriceInput.value = '0.00฿';
+            }
+        }
+
+        function attachEventListeners() {
+            document.querySelectorAll('.btn-cycle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const motorcycleId = this.getAttribute('data-motorcycle-id');
+                    const price = this.getAttribute('data-price');
+                    const model = this.getAttribute('data-model');
+
+                    document.getElementById('motorcycleId').value = motorcycleId;
+                    document.getElementById('motorcycleModel').value = model;
+                    document.getElementById('pricePerDay').value = `${price}฿`;
+                    document.getElementById('totalPrice').value = '0.00฿'; // Reset total price
+
+                    // Reset date inputs and set minimum dates
+                    const borrowDateInput = document.getElementById('borrowDate');
+                    const returnDateInput = document.getElementById('returnDate');
+                    borrowDateInput.value = ''; // Clear previous value
+                    returnDateInput.value = ''; // Clear previous value
+
+                    // Set minimum date for Borrow Date to today
+                    const today = new Date().toISOString().split('T')[0];
+                    borrowDateInput.setAttribute('min', today);
+
+                    // Reset Return Date minimum to prevent old constraints
+                    returnDateInput.removeAttribute('min');
+
+                    const modal = new bootstrap.Modal(document.getElementById('bookingModal'), {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    modal.show();
+                });
+            });
+
+            // Add event listeners for date inputs to restrict Return Date and calculate total price
+            const borrowDateInput = document.getElementById('borrowDate');
+            const returnDateInput = document.getElementById('returnDate');
+
+            borrowDateInput.addEventListener('change', function() {
+                const borrowDate = new Date(this.value);
+                if (borrowDate) {
+                    // Set the minimum Return Date to the day after Borrow Date
+                    const minReturnDate = new Date(borrowDate);
+                    minReturnDate.setDate(borrowDate.getDate() + 1);
+                    returnDateInput.setAttribute('min', minReturnDate.toISOString().split('T')[0]);
+
+                    // If Return Date is earlier than the new Borrow Date, clear it
+                    const currentReturnDate = returnDateInput.value ? new Date(returnDateInput.value) : null;
+                    if (currentReturnDate && currentReturnDate <= borrowDate) {
+                        returnDateInput.value = '';
+                    }
+                }
+                calculateTotalPrice(); // Recalculate total price
+            });
+
+            returnDateInput.addEventListener('change', function() {
+                calculateTotalPrice(); // Recalculate total price
+            });
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = "/views/Login.html";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const motorcycleId = document.getElementById('motorcycleId').value;
+            const borrowDate = document.getElementById('borrowDate').value;
+            const returnDate = document.getElementById('returnDate').value;
+            const totalPrice = parseFloat(document.getElementById('totalPrice').value.replace('฿', ''));
+
+            try {
+                const response = await fetch('http://localhost:3000/submit-request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        motorcycle_id: motorcycleId,
+                        borrow_date: borrowDate,
+                        return_date: returnDate,
+                        total_price: totalPrice // Include total price in the request
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Booking Submitted!',
+                        text: `Motorcycle ID ${motorcycleId} booked from ${borrowDate} to ${returnDate}. Total Price: ${totalPrice.toFixed(2)}฿`,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
+                        modal.hide();
+                        loadMotorcycles(); // Refresh the list
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to submit booking.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error('Error submitting booking:', error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while submitting the booking. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername();
+            await loadMotorcycles();
+        });
+    </script>
+</body>
+</html>

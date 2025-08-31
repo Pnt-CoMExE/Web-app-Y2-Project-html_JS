@@ -1,0 +1,47 @@
+[
+    {
+        "Product": "Wave 110i",
+        "Name": "Jacob",
+        "Date": "1/1/2025",
+        "Return": "12/3/2025",
+        "Status": "Approve",
+        "Permission": "T.Mason",
+        "ReturnSign": "Jacob"
+    },
+    {
+        "Product": "Wave 125i",
+        "Name": "Coco",
+        "Date": "4/3/2025",
+        "Return": "15/5/2025",
+        "Status": "Approve",
+        "Permission": "T.Champ",
+        "ReturnSign": "Monica"
+    },
+    {
+        "Product": "Fino",
+        "Name": "Gem",
+        "Date": "10/6/2025",
+        "Return": "-",
+        "Status": "Pending",
+        "Permission": "Waiting",
+        "ReturnSign": "-"
+    },
+    {
+        "Product": "Scooby",
+        "Name": "View",
+        "Date": "15/8/2025",
+        "Return": "-",
+        "Status": "Pending",
+        "Permission": "Waiting",
+        "ReturnSign": "-"
+    },
+    {
+        "Product": "Pcx",
+        "Name": "Sam",
+        "Date": "20/12/2025",
+        "Return": "-",
+        "Status": "Disapprove",
+        "Permission": "T.Dew",
+        "ReturnSign": "-"
+    }
+]

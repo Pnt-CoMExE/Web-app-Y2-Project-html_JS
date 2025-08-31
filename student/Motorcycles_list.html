@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student - Asset Borrowing System</title>
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="../student/Student.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/student/motorcycles">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/request">Booking</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/check">Booking Status</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/student/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display" id="usernameDisplay">Loading username...</span>
+            <button class="logout" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/motorbike.png" alt="motorbike" style="height: 25px;">
+            <h4 class="mb-0 mx-2"><i class="fas fa-search"></i>Motorcycle Asset List</h4>
+        </div>
+
+        <div class="row m-5" id="motorcycleList">
+            <p>Loading motorcycles...</p>
+        </div>
+    </section>
+
+    <script>
+        // Get username from localStorage as a fallback
+        const username = localStorage.getItem('username') || 'Guest';
+        console.log('Username from localStorage:', username);
+
+        // Fetch the logged-in user's info
+        async function fetchUserInfo() {
+            try {
+                console.log('Fetching user info...');
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                console.log('User info response status:', response.status);
+                const result = await response.json();
+                console.log('User info response:', result);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status} - ${result.message}`);
+                }
+
+                if (result.success) {
+                    return result.username;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('Error fetching user info:', error.message);
+                return username;
+            }
+        }
+
+        // Display the username in the navbar
+        async function displayUsername() {
+            console.log('Starting displayUsername...');
+            const fetchedUsername = await fetchUserInfo();
+            document.getElementById('usernameDisplay').textContent = `Welcome, ${fetchedUsername}!`;
+            console.log('Finished displayUsername');
+        }
+
+        // Fetch motorcycles
+        async function fetchMotorcycles() {
+            try {
+                console.log('Fetching motorcycles...');
+                const response = await fetch('http://localhost:3000/motorcycles', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                console.log('Motorcycles response status:', response.status);
+                const motorcycles = await response.json();
+                console.log('Fetched motorcycles:', motorcycles);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status} - ${motorcycles.message}`);
+                }
+
+                return motorcycles;
+            } catch (error) {
+                console.error('Error fetching motorcycles:', error.message);
+                return [
+                    { model: 'Honda CB500X', img: 'honda_cb500x.jpg', status: 'available' },
+                    { model: 'Yamaha MT-07', img: 'yamaha_mt07.jpg', status: 'pending' },
+                    { model: 'Kawasaki Ninja 400', img: 'kawasaki_ninja400.jpg', status: 'borrowed' }
+                ];
+            }
+        }
+
+        // Display motorcycles
+        function displayMotorcycles(motorcycles) {
+            console.log('Starting displayMotorcycles...');
+            const list = document.getElementById("motorcycleList");
+            list.innerHTML = "";
+            if (!motorcycles || motorcycles.length === 0) {
+                list.innerHTML = '<p>No motorcycles available.</p>';
+                console.log('No motorcycles to display');
+                return;
+            }
+            console.log('Displaying motorcycles:', motorcycles);
+            motorcycles.forEach(bike => {
+                list.innerHTML += `
+                    <div class="col-md-3">
+                        <div class="card p-3 mb-3 shadow">
+                            <h5>${bike.model}</h5>
+                            <img src="../img/motorcycle/${bike.img}" alt="${bike.img}" onerror="this.src='../img/motorcycle/placeholder.jpg'">
+                            <div class="d-flex">
+                                <p>Status: <strong>${bike.status}</strong></p>
+                                <img src="../img/icon/${bike.status}.png" alt="${bike.status}" class="mx-1" style="height: 13px; width: 13px; margin-top: 6px;" onerror="this.style.display='none'">
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            console.log('Finished displayMotorcycles');
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                console.log('Logging out...');
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                console.log('Logout response status:', response.status);
+                const result = await response.json();
+                console.log('Logout response:', result);
+
+                if (response.ok && result.success) {
+                    localStorage.clear();
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error logging out:", error.message);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // On page load
+        document.addEventListener("DOMContentLoaded", async () => {
+            console.log('DOMContentLoaded event fired');
+            await displayUsername();
+            const motorcycles = await fetchMotorcycles();
+            displayMotorcycles(motorcycles);
+        });
+
+        // Fallback if DOMContentLoaded doesn't fire
+        window.onload = async () => {
+            console.log('window.onload event fired');
+            await displayUsername();
+            const motorcycles = await fetchMotorcycles();
+            displayMotorcycles(motorcycles);
+        };
+    </script>
+</body>
+</html>

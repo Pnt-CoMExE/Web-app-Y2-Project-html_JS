@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff - Asset Borrowing System</title>
+    
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="/staff/stylestaff.css">
+    
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/staff/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/manage-assets">Manage Assets</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display" id="usernameDisplay"></span>
+            <button class="logout" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <!-- Dashboard -->
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/dashboard.png" alt="dashboard" style="height: 25px;">
+            <h4 class="mb-0 mx-2"><i class="fas fa-search"></i>Dashboard</h4>
+        </div>
+
+        <div class="row mt-3">
+            <div class="row m-1 col-md-8 mx-3" id="motorcycleList"></div>
+
+            <div class="col-md-3">
+                <div class="card p-0">
+                    <div class="card-header text-white d-flex bg-gradient-dark">
+                        <img src="../img/icon/dashboard2.png" alt="dashboard" style="height: 25px;">
+                        <h4 class="mb-0 mx-2"><i class="fas fa-search"></i>Dashboard Status</h4>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Available.png" alt="available" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/motorcycle_6839867_1.png" alt="motorbike" style="height: 25px;">
+                            <h5 class="mx-3"><b>Available:</b><span id="Available" class="mx-2">0</span></h5>
+                        </div>
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Pending.png" alt="pending" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/document_17081186.png" alt="document" style="height: 25px;">
+                            <h5 class="mx-3"><b>Pending:</b><span id="Pending" class="mx-2">0</span></h5>
+                        </div>
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Borrowed.png" alt="borrowed" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/calendar_8585121.png" alt="calendar" style="height: 25px;">
+                            <h5 class="mx-3"><b>Borrowed:</b><span id="Borrowed" class="mx-2">0</span></h5>
+                        </div>
+                        <div class="card-title d-flex">
+                            <img src="../img/icon/Disabled.png" alt="disabled" class="mx-3" style="height: 13px; width: 13px; margin-top: 6px;">
+                            <img src="../img/icon/cross_14875490.png" alt="cross" style="height: 25px;">
+                            <h5 class="mx-3"><b>Disabled:</b><span id="Disabled" class="mx-2">0</span></h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Fetch the logged-in user's username
+        async function fetchUserInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                return result.username;
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return null;
+            }
+        }
+
+        // Display the username in the navbar
+        async function displayUsername() {
+            const username = await fetchUserInfo();
+            if (username) {
+                document.getElementById('usernameDisplay').textContent = `Welcome, ${username}!`;
+            }
+        }
+
+        // Fetch dashboard data from backend
+        async function fetchDashboardData() {
+            try {
+                const response = await fetch('http://localhost:3000/staff/dashboard-data', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    if (response.status === 403) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Access denied. Staff only.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Fetched dashboard data:', data);
+                return data;
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load dashboard data. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return null;
+            }
+        }
+
+        function displayMotorcycles(data) {
+            if (!data || !data.motorcycles) return;
+
+            const list = document.getElementById("motorcycleList");
+            list.innerHTML = "";
+            data.motorcycles.forEach(bike => {
+                list.innerHTML += `
+                    <div class="col-md-3">
+                        <div class="card p-3 mb-3 shadow">
+                            <h5>${bike.model}</h5>
+                            <img src="../img/motorcycle/${bike.img}" alt="${bike.img}">
+                            <div class="d-flex">
+                                <p>Status: <strong>${bike.status}</strong></p>
+                                <img src="../img/icon/${bike.status}.png" alt="${bike.status}" class="mx-1" style="height: 13px; width: 13px; margin-top: 6px;">
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            // Update status counts from server data
+            document.getElementById("Available").textContent = data.statusCounts.available;
+            document.getElementById("Pending").textContent = data.statusCounts.pending;
+            document.getElementById("Borrowed").textContent = data.statusCounts.borrowed;
+            document.getElementById("Disabled").textContent = data.statusCounts.disabled;
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Load content when page is ready
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername();
+            const dashboardData = await fetchDashboardData();
+            if (dashboardData) {
+                displayMotorcycles(dashboardData);
+            }
+        });
+    </script>
+</body>
+</html>

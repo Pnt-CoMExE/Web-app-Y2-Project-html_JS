@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <title>Lender - Asset Borrowing System</title>
+    <link rel="stylesheet" href="stylelender.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Font Awesome for icons -->
+</head>
+
+<body>
+    <!-- Navbar (With Username Display) -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/lender/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/lender/requests">Requests</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/lender/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/lender/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2 align-items-center">
+            <span class="username-display text-white" id="usernameDisplay">Welcome, Guest!</span>
+            <button class="logout btn btn-danger ms-3" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/request.png" alt="motorbike" style="height: 25px;">
+            <h4 class="mb-0 mx-2"><i></i> Booking Request</h4>
+        </div>
+
+        <div class="table-responsive px-3 d-flex justify-content-center">
+            <table class="table-striped table-hover text-center mt-5" id="requestsTable">
+                <thead>
+                    <tr>
+                        <th>Picture</th>
+                        <th>Motorcycle Brand</th>
+                        <th>Username</th>
+                        <th>Price</th>
+                        <th>Booking Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <script>
+        // Fetch and display username
+        async function fetchUserInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                return { username: result.username, userId: result.userId, role: result.role };
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+                return null;
+            }
+        }
+
+        async function displayUsername() {
+            const user = await fetchUserInfo();
+            if (user) {
+                document.getElementById('usernameDisplay').textContent = `Welcome, ${user.username}!`;
+                return user;
+            }
+            return null;
+        }
+
+        // Fetch and display requests
+        async function loadRequests() {
+            try {
+                const response = await fetch('http://localhost:3000/lender/get-requests', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    throw new Error(`Network response was not ok: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    displayRequests(data.requests);
+                } else {
+                    throw new Error('API returned unsuccessful response');
+                }
+            } catch (error) {
+                console.error("Error fetching requests:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load requests. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+            }
+        }
+
+        function displayRequests(requests) {
+            const tbody = document.getElementById('requestsBody');
+            tbody.innerHTML = '';
+            if (!requests || requests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">No pending requests found.</td></tr>';
+                return;
+            }
+            requests.forEach(request => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><img src="../img/motorcycle/${request.motorcycle_img}" alt="${request.motorcycle_name}" class="motorcycle-img" style="height: 50px; object-fit: contain;"></td>
+                    <td>${request.motorcycle_name}</td>
+                    <td>${request.borrower_username}</td>
+                    <td>${request.total_price}฿</td>
+                    <td>${new Date(request.borrow_date).toLocaleDateString('en-US')} - ${new Date(request.return_date).toLocaleDateString('en-US')}</td>
+                    <td><span class="status pending">${request.status}</span></td>
+                    <td>
+                        <button class="action-btn approve-btn" data-request-id="${request.request_id}" data-motorcycle-id="${request.motorcycle_id}">Approve</button>
+                        <button class="action-btn disapprove-btn" data-request-id="${request.request_id}" data-motorcycle-id="${request.motorcycle_id}">Disapprove</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Add event listeners for approve and disapprove buttons
+            document.querySelectorAll('.approve-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const requestId = e.target.getAttribute('data-request-id');
+                    const motorcycleId = e.target.getAttribute('data-motorcycle-id');
+                    await updateRequestStatus(requestId, 'approved', motorcycleId);
+                });
+            });
+
+            document.querySelectorAll('.disapprove-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const requestId = e.target.getAttribute('data-request-id');
+                    const motorcycleId = e.target.getAttribute('data-motorcycle-id');
+                    await updateRequestStatus(requestId, 'disapproved', motorcycleId);
+                });
+            });
+        }
+
+            async function updateRequestStatus(requestId, status, motorcycleId) {
+                try {
+                    const user = await fetchUserInfo(); // Fetch user info to get lender_id
+                    if (!user) {
+                        throw new Error('User not authenticated');
+                    }
+
+                    const response = await fetch(`http://localhost:3000/lender/update-request/${requestId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ status, motorcycleId, lenderId: user.userId }) // Include lenderId
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: `Request ${status.toLowerCase()} successfully.`,
+                            icon: 'success',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: result.message || 'Failed to update request.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error updating request status:", error);
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'An error occurred while updating the request.',
+                        icon: 'error',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    });
+                }
+            }
+
+        // Logout function
+        function logout() {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'You will be logged out and redirected to the login page.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Logout!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('http://localhost:3000/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    }).then(response => {
+                        if (response.ok) {
+                            Swal.fire({
+                                title: 'Logged Out!',
+                                text: 'Redirecting to login page...',
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href = "/views/Login.html";
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error!',
+                                text: 'Failed to log out.',
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    }).catch(error => {
+                        console.error('Logout error:', error);
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'An error occurred during logout.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    });
+                }
+            });
+        }
+
+        // Load content when page is ready
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername();
+            await loadRequests();
+        });
+
+        // Custom CSS for SweetAlert
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .animated-swal {
+                border-radius: 15px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            .swal2-html-container {
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .swal2-confirm, .swal2-cancel {
+                border-radius: 10px !important;
+                padding: 8px 20px !important;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>

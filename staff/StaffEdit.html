@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff - Asset Borrowing System</title>
+
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="/staff/stylestaff.css">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/staff/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/manage-assets">Manage Assets</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display" id="usernameDisplay"></span>
+            <button class="logout" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white">
+            <div class="d-flex align-items-center">
+                <img src="../img/icon/manageAsset.png" alt="motorbike" style="height: 25px;">
+                <h4 class="mb-0 mx-2">Staff Manage Assets</h4>
+            </div>
+        </div>
+
+        <div class="card-body row">
+            <div class="col-md-3">
+                <div class="card my-3">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <div class="d-flex align-items-center">
+                            <img src="../img/icon/motorbike.png" alt="motorbike"
+                                style="height: 25px; margin-left: 10px">
+                            <h4 class="mb-2 mx-2 mt-2">Staff Add Product</h4>
+                        </div>
+                    </div>
+                    <div class="card-body d-flex justify-content-center mt-5 mb-5">
+                        <button class="btn btn-primary add-motorcycle-btn" onclick="openAddMotorcycleModal()">Add
+                            Motorcycle</button>
+                    </div>
+                </div>
+
+                <!-- New Card for Checking Returned Motorcycles -->
+                <div class="card my-3">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <div class="d-flex align-items-center">
+                            <img src="../img/icon/motorbike.png" alt="motorbike"
+                                style="height: 25px; margin-left: 10px">
+                            <h4 class="mb-2 mx-2 mt-2">Check Returned Motorcycles</h4>
+                        </div>
+                    </div>
+                    <div class="card-body d-flex justify-content-center mt-5 mb-5">
+                        <button class="btn btn-primary check-returned-btn" onclick="checkReturnedMotorcycles()">Check
+                            Returned</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="collection-container my-3 col-md-9" id="motorcycleContainer">
+                <!-- Motorcycles will be dynamically inserted here -->
+            </div>
+        </div>
+    </section>
+
+    <script>
+        async function fetchUserInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                console.log('User info:', result); // Debug log to confirm role
+                return { username: result.username, userId: result.userId };
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+                return null;
+            }
+        }
+
+        // Display the username in the navbar
+        async function displayUsername() {
+            const user = await fetchUserInfo();
+            if (user) {
+                document.getElementById('usernameDisplay').textContent = `Welcome, ${user.username}!`;
+                return user;
+            }
+            return null;
+        }
+
+        // Fetch motorcycle data from the server
+        async function loadMotorcycles() {
+            try {
+                const response = await fetch('http://localhost:3000/staff/manage-assets-data', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    if (response.status === 403) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Access denied. Staff only.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    throw new Error(`Network response was not ok: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Fetched motorcycles:', data.motorcycles);
+                displayMotorcycles(data.motorcycles);
+            } catch (error) {
+                console.error("Error fetching motorcycles:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load motorcycle data. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+            }
+        }
+
+        function displayMotorcycles(motorcycles) {
+            const container = document.getElementById('motorcycleContainer');
+            container.innerHTML = ''; // Clear existing content
+        
+            // Map the data to the expected structure with default values
+            const mappedMotorcycles = motorcycles.map(bike => ({
+                motorcycle_id: bike.motorcycleId || bike.motorcycle_id || 'unknown',
+                img: bike.img || 'default.png', // Fallback image
+                model: bike.model || 'Unknown Model',
+                price: bike.price || 0,
+                register: bike.register || 'N/A',
+                status: bike.status || 'unknown'
+            }));
+        
+            mappedMotorcycles.forEach((bike) => {
+                const cycleItem = `
+                    <div class="collection-cycle-item card shadow" data-motorcycle-id="${bike.motorcycle_id}">
+                        <img src="/img/motorcycle/${bike.img}" alt="${bike.model}" class="cycle-image" style="width: 100%; height: auto; object-fit: cover;" onerror="this.src='/img/motorcycle/default.png';">
+                        <div class="cycle-info-container">
+                            <div class="cycle-info">
+                                <div class="cycle-price">
+                                    <h5>${bike.price}฿</h5>
+                                    <h6>/Day</h6>
+                                </div>
+                                <div class="cycle-register">
+                                    <h6>${bike.register}</h6>
+                                </div>
+                            </div>
+                            <h2 class="cycle-model">${bike.model}</h2>
+                            <p class="status-display">Status: ${bike.status}</p>
+                            <div class="button-container d-flex justify-content-center">
+                                <button style="background-color: blueviolet;" class="btn btn-edit status" data-model="${bike.model}" data-price="${bike.price}" data-img="${bike.img}" data-register="${bike.register}">Edit</button>
+                                <button style="background-color: blueviolet;" class="btn btn-status status" data-status="${bike.status}">Status</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cycleItem;
+            });
+        }
+        
+        // Attach event listeners using event delegation
+        function attachEventListeners() {
+            const container = document.getElementById('motorcycleContainer');
+
+            // Event delegation for Edit buttons
+            container.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-edit')) {
+                    const card = event.target.closest('.collection-cycle-item');
+                    const motorcycleId = card.dataset.motorcycleId;
+                    const model = event.target.dataset.model;
+                    const price = event.target.dataset.price;
+                    const img = event.target.dataset.img;
+                    const register = event.target.dataset.register;
+                    editMotorcycle(motorcycleId, model, price, img, register);
+                }
+            });
+
+            // Event delegation for Status buttons
+            container.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-status')) {
+                    const card = event.target.closest('.collection-cycle-item');
+                    const motorcycleId = card.dataset.motorcycleId;
+                    const currentStatus = event.target.dataset.status;
+                    updateStatus(motorcycleId, currentStatus);
+                }
+            });
+        }
+
+        // Open Edit Motorcycle Modal with SweetAlert
+        function editMotorcycle(motorcycleId, model, price, img, register) {
+            Swal.fire({
+                title: 'Edit Motorcycle',
+                html: `
+                    <input type="hidden" id="editMotorcycleId" value="${motorcycleId}">
+                    <div class="mb-3 text-start">
+                        <label for="editModel" class="form-label">Model</label>
+                        <input type="text" class="form-control" id="editModel" value="${model}" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="editPrice" class="form-label">Price (฿/Day)</label>
+                        <input type="number" class="form-control" id="editPrice" value="${price}" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="editImg" class="form-label">Image File Name (e.g., wave110i.png)</label>
+                        <input type="text" class="form-control" id="editImg" value="${img}" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="editRegister" class="form-label">Register</label>
+                        <input type="text" class="form-control" id="editRegister" value="${register}" required>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Close',
+                customClass: {
+                    popup: 'animated-swal',
+                    confirmButton: 'btn btn-primary',
+                    cancelButton: 'btn btn-secondary'
+                },
+                preConfirm: () => {
+                    const model = document.getElementById('editModel').value;
+                    const price = document.getElementById('editPrice').value;
+                    const img = document.getElementById('editImg').value;
+                    const register = document.getElementById('editRegister').value;
+
+                    if (!model || !price || !img || !register) {
+                        Swal.showValidationMessage('All fields are required.');
+                        return false;
+                    }
+                    if (isNaN(price) || price <= 0) {
+                        Swal.showValidationMessage('Price must be a positive number.');
+                        return false;
+                    }
+                    return { model, price, img, register };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    saveMotorcycleChanges(motorcycleId, result.value);
+                } else if (result.isDismissed) {
+                    window.location.href = '/staff/manage-assets';
+                }
+            });
+        }
+
+        // Save Motorcycle Changes
+        async function saveMotorcycleChanges(motorcycleId, { model, price, img, register }) {
+            try {
+                const response = await fetch(`http://localhost:3000/staff/update-motorcycle/${motorcycleId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ model, price, img, register })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Motorcycle updated successfully.',
+                        icon: 'success',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    }).then(() => {
+                        window.location.href = '/staff/manage-assets';
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to update motorcycle.',
+                        icon: 'error',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    }).then(() => {
+                        window.location.href = '/staff/manage-assets';
+                    });
+                }
+            } catch (error) {
+                console.error("Error updating motorcycle:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while updating the motorcycle.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                }).then(() => {
+                    window.location.href = '/staff/manage-assets';
+                });
+            }
+        }
+
+        // Open Update Status Modal with SweetAlert
+        function updateStatus(motorcycleId, currentStatus) {
+            // If current status is "borrowed", set default to "available" with confirmation
+            let defaultStatus = currentStatus;
+            if (currentStatus === 'borrowed') {
+                defaultStatus = 'available';
+                Swal.fire({
+                    title: 'Confirm Return',
+                    text: 'Are you sure you want to mark this motorcycle as available? This will update the status to "available".',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'No',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary',
+                        cancelButton: 'btn btn-secondary'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        saveStatusChanges(motorcycleId, defaultStatus);
+                    } else if (result.dismiss === Swal.DismissReason.cancel) {
+                        return; // Do nothing if canceled
+                    }
+                });
+            } else {
+                // For other statuses, show the dropdown
+                Swal.fire({
+                    title: 'Update Status',
+                    html: `
+                        <input type="hidden" id="updateMotorcycleId" value="${motorcycleId}">
+                        <div class="mb-3 text-start">
+                            <label for="updateStatus" class="form-label">Status</label>
+                            <select class="form-control" id="updateStatus" required>
+                                <option value="available" ${currentStatus === 'available' ? 'selected' : ''}>Available</option>
+                                <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="borrowed" ${currentStatus === 'borrowed' ? 'selected' : ''}>Borrowed</option>
+                                <option value="disabled" ${currentStatus === 'disabled' ? 'selected' : ''}>Disabled</option>
+                            </select>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Save Changes',
+                    cancelButtonText: 'Close',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary',
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    preConfirm: () => {
+                        const status = document.getElementById('updateStatus').value;
+                        if (!status) {
+                            Swal.showValidationMessage('Status is required.');
+                            return false;
+                        }
+                        return status;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        saveStatusChanges(motorcycleId, result.value);
+                    } else if (result.isDismissed) {
+                        window.location.href = '/staff/manage-assets';
+                    }
+                });
+            }
+        }
+
+        // Save Status Changes
+        async function saveStatusChanges(motorcycleId, status) {
+            try {
+                const response = await fetch(`http://localhost:3000/staff/update-motorcycle-status/${motorcycleId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ status })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Status updated successfully.',
+                        icon: 'success',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    }).then(() => {
+                        window.location.href = '/staff/manage-assets';
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to update status.',
+                        icon: 'error',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    }).then(() => {
+                        window.location.href = '/staff/manage-assets';
+                    });
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while updating the status.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                }).then(() => {
+                    window.location.href = '/staff/manage-assets';
+                });
+            }
+        }
+
+        // Open Add Motorcycle Modal with SweetAlert
+        function openAddMotorcycleModal() {
+            Swal.fire({
+                title: 'Add Motorcycle',
+                html: `
+                    <div class="mb-3 text-start">
+                        <label for="addModel" class="form-label">Model</label>
+                        <input type="text" class="form-control" id="addModel" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="addPrice" class="form-label">Price (฿/Day)</label>
+                        <input type="number" class="form-control" id="addPrice" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="addImg" class="form-label">Image File Name (e.g., wave110i.png)</label>
+                        <input type="text" class="form-control" id="addImg" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="addRegister" class="form-label">Register</label>
+                        <input type="text" class="form-control" id="addRegister" required>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="addStatus" class="form-label">Status</label>
+                        <select class="form-control" id="addStatus" required>
+                            <option value="available">Available</option>
+                            <option value="pending">Pending</option>
+                            <option value="borrowed">Borrowed</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Add Motorcycle',
+                cancelButtonText: 'Close',
+                customClass: {
+                    popup: 'animated-swal',
+                    confirmButton: 'btn btn-primary',
+                    cancelButton: 'btn btn-secondary'
+                },
+                preConfirm: () => {
+                    const model = document.getElementById('addModel').value;
+                    const price = document.getElementById('addPrice').value;
+                    const img = document.getElementById('addImg').value;
+                    const register = document.getElementById('addRegister').value;
+                    const status = document.getElementById('addStatus').value;
+
+                    if (!model || !price || !img || !register || !status) {
+                        Swal.showValidationMessage('All fields are required.');
+                        return false;
+                    }
+                    if (isNaN(price) || price <= 0) {
+                        Swal.showValidationMessage('Price must be a positive number.');
+                        return false;
+                    }
+                    return { model, price, img, register, status };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    addMotorcycle(result.value);
+                } else if (result.isDismissed) {
+                    window.location.href = '/staff/manage-assets';
+                }
+            });
+        }
+
+        // Add Motorcycle
+        async function addMotorcycle({ model, price, img, register, status }) {
+            try {
+                const user = await fetchUserInfo();
+                if (!user) {
+                    throw new Error('User not authenticated');
+                }
+
+                const response = await fetch('http://localhost:3000/staff/add-motorcycle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ model, price, img, register, status, created_by: user.userId })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Motorcycle added successfully.',
+                        icon: 'success',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    }).then(() => {
+                        window.location.href = '/staff/manage-assets';
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to add motorcycle.',
+                        icon: 'error',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    }).then(() => {
+                        window.location.href = '/staff/manage-assets';
+                    });
+                }
+            } catch (error) {
+                console.error("Error adding motorcycle:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while adding the motorcycle.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                }).then(() => {
+                    window.location.href = '/staff/manage-assets';
+                });
+            }
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        customClass: {
+                            popup: 'animated-swal'
+                        }
+                    }).then(() => {
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+            }
+        }
+
+        async function checkReturnedMotorcycles() {
+            try {
+                const response = await fetch('http://localhost:3000/staff/approved-requests', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+        
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error(`Failed to fetch approved requests: Status ${response.status}, Message: ${errorData.message}`);
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    if (response.status === 403) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Access denied. Staff role required.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    throw new Error(`Network response was not ok: ${response.status} - ${errorData.message}`);
+                }
+        
+                const data = await response.json();
+                console.log('Approved requests:', data.requests);
+                displayApprovedRequests(data.requests);
+            } catch (error) {
+                console.error("Error fetching approved requests:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load approved requests. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'animated-swal',
+                        confirmButton: 'btn btn-primary'
+                    }
+                });
+            }
+        }
+
+        function displayApprovedRequests(requests) {
+            // Check if the requests array is empty
+            if (!requests || requests.length === 0) {
+                Swal.fire({
+                    title: 'No Approved Borrowing Requests',
+                    text: 'There are currently no approved borrowing requests to display.',
+                    icon: 'info',
+                    showCloseButton: true, // Add close (X) button
+                    showCancelButton: true, // Add a "Close" button at the bottom
+                    cancelButtonText: 'Close', // Label for the Close button
+                    showConfirmButton: false, // No confirm button needed
+                    customClass: {
+                        popup: 'animated-swal',
+                        cancelButton: 'btn btn-secondary' // Style for the Close button
+                    }
+                }).then((result) => {
+                    if (result.isDismissed || result.isDenied) {
+                        // Reload the page when "Close" or the close (X) button is clicked
+                        window.location.reload();
+                    }
+                });
+                return; // Exit the function
+            }
+        
+            // If there are requests, display them as before
+            let html = '<div class="row">';
+            requests.forEach((req, index) => {
+                console.log(`Request: ${JSON.stringify(req)}`); // Debug log
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <img src="/img/motorcycle/${req.motorcycle_img}" alt="${req.motorcycle_name}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                            <div class="card-body">
+                                <h5 class="card-title">${req.motorcycle_name}</h5>
+                                <p class="card-text">Borrower: ${req.borrower_name}</p>
+                                <p class="card-text">Status: ${req.status}</p>
+                                <button class="btn btn-primary return-btn" data-request-id="${req.request_id}" data-motorcycle-id="${req.motorcycle_id}">Return</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                if ((index + 1) % 2 === 0) {
+                    html += '</div><div class="row">';
+                }
+            });
+            html += '</div>';
+        
+            Swal.fire({
+                title: 'Approved Borrowing Requests',
+                html: html,
+                showConfirmButton: false,
+                showCloseButton: true, // Add close (X) button
+                showCancelButton: true, // Add a "Close" button at the bottom
+                cancelButtonText: 'Close', // Label for the Close button
+                customClass: {
+                    popup: 'animated-swal',
+                    cancelButton: 'btn btn-secondary' // Style for the Close button
+                },
+                didOpen: () => {
+                    // Attach event listeners to return buttons
+                    document.querySelectorAll('.return-btn').forEach(button => {
+                        button.addEventListener('click', () => {
+                            const requestId = button.getAttribute('data-request-id');
+                            const motorcycleId = button.getAttribute('data-motorcycle-id');
+                            console.log(`Clicked Return: requestId=${requestId}, motorcycleId=${motorcycleId}`); // Debug log
+                            confirmReturn(requestId, motorcycleId);
+                        });
+                    });
+                }
+            });
+        }
+
+        function confirmReturn(requestId, motorcycleId) {
+            Swal.fire({
+                title: 'Confirm Return',
+                text: 'Has the motorcycle been returned?',
+                icon: 'question',
+                showCancelButton: true,
+                showCloseButton: true, // Adds a close (X) button to the modal
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'No',
+                showDenyButton: true, // Adds a third button for "Close"
+                denyButtonText: 'Close', // Label for the new Close button
+                customClass: {
+                    popup: 'animated-swal',
+                    confirmButton: 'btn btn-primary',
+                    cancelButton: 'btn btn-secondary',
+                    denyButton: 'btn btn-secondary' // Style for the Close button
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // "Yes" is clicked, proceed with return
+                    updateReturnStatus(requestId, motorcycleId);
+                } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+                    // "No" is clicked, reload the page
+                    window.location.reload();
+                } else if (result.isDenied) {
+                    // "Close" is clicked, do nothing (modal closes automatically)
+                    return;
+                } else if (result.isDismissed && result.dismiss === Swal.DismissReason.close) {
+                    // Close (X) button is clicked, do nothing (modal closes automatically)
+                    return;
+                }
+            });
+        }
+
+            async function updateReturnStatus(requestId, motorcycleId) {
+                try {
+                    const user = await fetchUserInfo(); // Fetch user info to get staff_id
+                    if (!user) {
+                        throw new Error('User not authenticated');
+                    }
+
+                    console.log(`Attempting to update return status: requestId=${requestId}, motorcycleId=${motorcycleId}`);
+                    const response = await fetch(`http://localhost:3000/staff/update-return-status/${requestId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ motorcycleId, staffId: user.userId }) // Include staffId
+                    });
+
+                    const result = await response.json();
+                    console.log(`Response from server: ${JSON.stringify(result)}`);
+
+                    if (response.ok) {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: 'Motorcycle returned successfully.',
+                            icon: 'success',
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        let errorMessage = result.message || 'An error occurred while updating the return status.';
+                        if (result.message === 'Request is already marked as returned.') {
+                            errorMessage = 'This motorcycle has already been marked as returned.';
+                        } else if (result.message === 'Motorcycle ID mismatch.') {
+                            errorMessage = 'The provided motorcycle ID does not match the request.';
+                        }
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errorMessage,
+                            icon: 'error',
+                            showConfirmButton: true,
+                            confirmButtonText: 'OK',
+                            showCloseButton: true,
+                            customClass: {
+                                popup: 'animated-swal',
+                                confirmButton: 'btn btn-primary',
+                                closeButton: 'btn-close'
+                            }
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error updating return status:", error);
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'An unexpected error occurred while updating the return status.',
+                        icon: 'error',
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        showCloseButton: true,
+                        customClass: {
+                            popup: 'animated-swal',
+                            confirmButton: 'btn btn-primary',
+                            closeButton: 'btn-close'
+                        }
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }
+            }
+
+        // Load content when page is ready
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername();
+            await loadMotorcycles();
+            attachEventListeners(); // Attach event listeners after initial load
+        });
+
+        // Custom CSS for SweetAlert
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .animated-swal {
+                border-radius: 15px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            .swal2-html-container {
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .swal2-confirm, .swal2-cancel {
+                border-radius: 10px !important;
+                padding: 8px 20px !important;
+            }
+            .btn-close {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                color: #000;
+                opacity: 0.5;
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                cursor: pointer;
+            }
+            .btn-close:hover {
+                opacity: 1;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>

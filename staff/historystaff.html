@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff - Asset Borrowing System</title>
+    <link rel="stylesheet" href="../bootstrap5/css/bootstrap.min.css">
+    <script src="../bootstrap5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
+    <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="/staff/stylestaff.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        .container {
+            width: auto;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        thead {
+            background-color: #2c3e50;
+            color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #F5F5F5;
+        }
+        .status {
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .approved {
+            background-color: #28a745;
+            color: white;
+        }
+        .pending {
+            background-color: #ffc107;
+            color: black;
+        }
+        .disapproved {
+            background-color: #dc3545;
+            color: white;
+        }
+        .returned {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .borrowed {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample11"
+            aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
+            <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
+            <h4 class="mx-1">CE Rental</h4>
+        </div>
+
+        <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
+            <ul class="navbar-nav col-lg-8">
+                <li class="nav-item">
+                    <a href="/staff/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/manage-assets">Manage Assets</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/staff/history">History</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="d-lg-flex col-lg-2">
+            <span class="username-display" id="usernameDisplay"></span>
+            <button class="logout" onclick="logout()">Log out</button>
+        </div>
+    </nav>
+
+    <section class="card" id="collection">
+        <div class="card-header bg-gradient-primary text-white d-flex">
+            <img src="../img/icon/history.png" alt="history" style="height: 25px;">
+            <h4 class="mb-0 mx-2">History</h4>
+        </div>
+
+        <div class="m-5">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Return</th>
+                        <th>Status</th>
+                        <th>Permission</th>
+                        <th>Return Sign</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTable">
+                    <!-- Data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script>
+        // Fetch the logged-in user's username
+        async function fetchUserInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return null;
+                    }
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                return result.username;
+            } catch (error) {
+                console.error("Error fetching user info:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load user information. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return null;
+            }
+        }
+
+        // Display the username in the navbar
+        async function displayUsername() {
+            const username = await fetchUserInfo();
+            if (username) {
+                document.getElementById('usernameDisplay').textContent = `Welcome, ${username}!`;
+            }
+        }
+
+        // Fetch history data from the server
+        async function loadHistory() {
+            try {
+                const response = await fetch('http://localhost:3000/staff/history-data', {  // Updated to /staff/history-data
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'You need to log in to access this page.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    if (response.status === 403) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Access denied. Staff only.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            window.location.href = '/';
+                        });
+                        return;
+                    }
+                    throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Fetched history:', data.history);
+                displayHistory(data.history);
+            } catch (error) {
+                console.error("Error fetching history:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to load history data. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Display history data in the table
+        function displayHistory(history) {
+            const table = document.getElementById('historyTable');
+            table.innerHTML = "";
+
+            history.forEach(item => {
+                // Use history status if available, otherwise fall back to request_status
+                const status = item.status || item.request_status;
+                const statusClass = status.toLowerCase();
+                const permission = item.request_status === 'approved' ? 'Approved' : 
+                                 item.request_status === 'disapproved' ? 'Disapproved' : 'Pending';
+                const returnSign = item.actual_return_date ? 'Returned' : 'Not Returned';
+                const row = `<tr>
+                    <td>${item.motorcycle_name}</td>
+                    <td>${item.borrower_name}</td>
+                    <td>${new Date(item.borrow_date).toLocaleDateString()}</td> <!-- Format date -->
+                    <td>${new Date(item.return_date).toLocaleDateString()}</td> <!-- Format date -->
+                    <td><span class="status ${statusClass}">${status}</span></td>
+                    <td>${permission}</td>
+                    <td>${returnSign}</td>
+                </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Load content when page is ready
+        document.addEventListener("DOMContentLoaded", async () => {
+            await displayUsername();
+            await loadHistory();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Asset Borrowing System</title>
+    <link href="/bootstrap5/css/bootstrap.min.css" rel="stylesheet">
+    <script src="/bootstrap5/js/sweetalert2.all.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            line-height: 1.6;
+            background: url('../img/bg/background1.jpeg');
+            background-size: cover;
+        }
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: inherit; /* Inherit the background image */
+            filter: blur(10px);
+            z-index: -1;
+        }
+    </style>
+</head>
+
+<body class="d-flex justify-content-center align-items-center vh-100 bg-light">
+    <div class="card p-4 shadow" style="width: 350px;">
+        <h3 class="text-center">Motorcycle Borrowing</h3>
+        <label>Username</label>
+        <input type="text" class="form-control mb-2" id="loginUsername">
+        <label>Password</label>
+        <input type="password" class="form-control mb-2" id="loginPassword">
+        <button class="btn btn-primary w-100" onclick="login()">Login</button>
+    </div>
+
+    <script>
+        function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                Swal.fire('Error', 'Please fill in both username and password.', 'error');
+                return;
+            }
+
+            // Simulated successful login (replace with real authentication if needed)
+            Swal.fire({
+                title: 'Login Successful!',
+                text: 'Redirecting to motorcycle borrowing system...',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = "/staff/Motorcycle_list_staff.html";
+            });
+        }
+    </script>
+</body>
+
+</html>

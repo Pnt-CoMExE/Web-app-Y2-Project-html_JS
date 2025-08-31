@@ -1,0 +1,149 @@
+staff css
+/* Same as student_styles.css but with a different navbar color for distinction */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    line-height: 1.6;
+    background: url('../img/bg/background1.jpeg');
+    background-size: cover;
+}
+
+body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: inherit; /* Inherit the background image */
+    filter: blur(10px);
+    z-index: -1;
+}
+
+.navbar {
+    display: flex;
+    background-color: #2c3e50; /* Different color for Staff */
+    padding: 15px 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar ul {
+    list-style-type: none;
+    display: flex;
+    justify-content: flex-start;
+    gap: 20px;
+}
+
+.navbar ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+    transition: color 0.3s;
+    float: auto;
+}
+
+.navbar ul li a:hover {
+    color: #3498db;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #2c3e50;
+}
+
+.action {
+    margin-bottom: 20px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #3498db; /* Different button color for Staff */
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #2980b9;
+}
+
+.remark {
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+.logout {
+    margin-left: auto; /* Pushes the button to the left */
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.logout:hover {
+    background-color: #c0392b;
+}
+
+.logout a {
+    color: white;
+    text-decoration: none;
+}
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .navbar ul {
+        flex-direction: column;
+        text-align: center;
+    }
+    .navbar ul li {
+        margin: 10px 0;
+    }
+}
+
+#collection {
+    margin: 50px;
+    overflow-x: auto;
+    display: flex;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(to right, #4a00e0, #8e2de2);
+}
+
+.username-display {
+    color: #fff;
+    font-weight: bold;
+    margin-right: 5px;
+    margin-top: 9px;
+}
