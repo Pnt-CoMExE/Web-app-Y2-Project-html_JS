@@ -41,7 +41,8 @@
             margin-top: 10px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px;
             text-align: center;
             border: 1px solid #dee2e6;
@@ -81,8 +82,8 @@
             text-transform: uppercase;
             display: inline-block;
             font-size: 0.9rem;
-            cursor: pointer; /* Make the status clickable */
-            text-decoration: none; /* Remove underline from links */
+            cursor: pointer;
+            text-decoration: none;
         }
 
         .approved {
@@ -98,7 +99,7 @@
         .disapproved {
             background-color: #dc3545;
             color: white;
-            cursor: default; /* Not clickable for disapproved */
+            cursor: default;
         }
 
         .borrowed {
@@ -111,6 +112,13 @@
             color: white;
         }
 
+        th:nth-child(5),
+        td:nth-child(5),
+        th:nth-childUrl(6),
+        td:nth-child(6) {
+            white-space: nowrap;
+            min-width: 200px;
+        }
     </style>
 </head>
 
@@ -164,7 +172,8 @@
                         <th>Product Name</th>
                         <th>Date</th>
                         <th>Return</th>
-                        <th>Status</th>
+                        <th>Request Status</th>
+                        <th>Return Status</th>
                     </tr>
                 </thead>
                 <tbody id="historyTable">
@@ -228,7 +237,7 @@
         async function loadHistory() {
             try {
                 console.log('Fetching history from /student/history/data');
-                const response = await fetch('http://localhost:3000/student/history/data', {
+                const response = await fetch('http://localhost:3000/student/history-data', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -267,85 +276,137 @@
         }
 
         // Check the borrowing status of a motorcycle and allow status updates
-        async function checkStatus(historyId, motorcycleName) {
-    try {
-        const response = await fetch(`http://localhost:3000/student/check-status/${historyId}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error(`Failed to fetch status: ${response.status}`);
-        const result = await response.json();
-        if (result.success) {
-            Swal.fire({
-                title: 'Motorcycle Status',
-                text: `${result.motorcycle_name} is currently ${result.status.toUpperCase()}.`,
-                icon: 'info',
-                confirmButtonText: 'OK'
-            });
-        } else {
-            Swal.fire({
-                title: 'Error!',
-                text: result.message || 'Failed to fetch status.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
+        async function checkStatus(historyId, motorcycleName, requestId) {
+            try {
+                const response = await fetch(`http://localhost:3000/student/check-status/${historyId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch status: ${response.status} - ${errorText}`);
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    // If the status is "borrowed," show an option to mark as returned
+                    if (result.status === 'borrowed') {
+                        Swal.fire({
+                            title: 'Motorcycle Status',
+                            text: `${result.motorcycle_name} is currently ${result.status.toUpperCase()}. Would you like to mark it as returned?`,
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonText: 'Mark as Returned',
+                            cancelButtonText: 'Cancel'
+                        }).then(async (action) => {
+                            if (action.isConfirmed) {
+                                // Call the update endpoint to mark as returned
+                                const updateResponse = await fetch(`http://localhost:3000/update-request-status/${requestId}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ status: 'returned' }),
+                                    credentials: 'include'
+                                });
+
+                                if (!updateResponse.ok) {
+                                    const errorText = await updateResponse.text();
+                                    throw new Error(`Failed to update status: ${updateResponse.status} - ${errorText}`);
+                                }
+
+                                const updateResult = await updateResponse.json();
+                                if (updateResult.success) {
+                                    Swal.fire({
+                                        title: 'Success!',
+                                        text: 'Motorcycle marked as returned.',
+                                        icon: 'success',
+                                        confirmButtonText: 'OK'
+                                    }).then(() => {
+                                        // Reload the history table
+                                        loadHistory();
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: 'Error!',
+                                        text: updateResult.message || 'Failed to update status.',
+                                        icon: 'error',
+                                        confirmButtonText: 'OK'
+                                    });
+                                }
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Motorcycle Status',
+                            text: `${result.motorcycle_name} is currently ${result.status.toUpperCase()}.`,
+                            icon: 'info',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to fetch status.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching status:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to fetch status. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
         }
-    } catch (error) {
-        console.error("Error fetching status:", error);
-        Swal.fire({
-            title: 'Error!',
-            text: 'Failed to fetch status. Please try again later.',
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-    }
-}
 
         // Populate the history table
         function populateHistoryTable(history) {
             const tableBody = document.getElementById('historyTable');
-            tableBody.innerHTML = ''; // Clear existing rows
+            tableBody.innerHTML = '';
 
             if (history.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">No history found.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6">No history found.</td></tr>';
                 return;
             }
 
             history.forEach(item => {
-                const borrowDate = new Date(item.borrow_date).toLocaleDateString('en-US', {
-                    day: 'numeric',
-                    month: 'numeric',
-                    year: 'numeric'
-                });
-                const returnDate = new Date(item.return_date).toLocaleDateString('en-US', {
-                    day: 'numeric',
-                    month: 'numeric',
-                    year: 'numeric'
-                });
+                console.log('History item received:', item);
+                console.log('Request status:', item.request_status, 'Lender username:', item.lender_username, 'Staff username:', item.staff_username);
 
-                // Determine the status to display
-                let displayStatus = item.request_status || item.history_status;
-                let statusClass = displayStatus.toLowerCase();
+                const borrowDate = new Date(item.borrow_date).toLocaleDateString('en-US', { day: 'numeric', month: 'numeric', year: 'numeric' });
+                const returnDate = new Date(item.return_date).toLocaleDateString('en-US', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
-                // If actual_return_date is not null, the motorcycle has been returned
-                if (item.actual_return_date) {
-                    displayStatus = 'returned';
-                    statusClass = 'returned';
-                } else if (item.history_status === 'borrowed') {
-                    displayStatus = 'borrowed';
-                    statusClass = 'borrowed';
+                // Request Status column (only APPROVED or DISAPPROVED by lender)
+                let requestStatusText = '-';
+                let requestStatusClass = '';
+                const statusLower = item.request_status.toLowerCase();
+                if (statusLower === 'approved') {
+                    requestStatusText = item.lender_username ? `APPROVED by ${item.lender_username}` : 'APPROVED by Unknown';
+                    requestStatusClass = 'approved';
+                    if (!item.lender_username) {
+                        console.warn(`Missing lender_username for approved request ID ${item.request_id}`);
+                    }
+                } else if (statusLower === 'disapproved') {
+                    requestStatusText = item.lender_username ? `DISAPPROVED by ${item.lender_username}` : 'DISAPPROVED by Unknown';
+                    requestStatusClass = 'disapproved';
+                    if (!item.lender_username) {
+                        console.warn(`Missing lender_username for disapproved request ID ${item.request_id}`);
+                    }
                 }
+                const requestStatusElement = `<span class="status ${requestStatusClass}">${requestStatusText}</span>`;
 
-                // Create the status element
-                let statusElement;
-                if (item.request_status === 'disapproved' || displayStatus === 'returned') {
-                    // If disapproved or returned, show status without a link
-                    statusElement = `<span class="status ${statusClass}">${displayStatus.toUpperCase()}</span>`;
-                } else {
-                    // Otherwise, make the status a clickable link
-                    statusElement = `<a href="#" class="status ${statusClass}" onclick="checkStatus(${item.history_id}, '${item.motorcycle_name}', ${item.request_id}); return false;">${displayStatus.toUpperCase()}</a>`;
-                }
+                // Return Status column (RETURNED by staff)
+                let returnStatusText = statusLower === 'returned' && item.staff_username ? `RETURNED by ${item.staff_username}` : '-';
+                let returnStatusClass = statusLower === 'returned' ? 'returned' : '';
+                const returnStatusElement = `<span class="status ${returnStatusClass}">${returnStatusText}</span>`;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -353,8 +414,10 @@
                     <td>${item.motorcycle_name}</td>
                     <td>${borrowDate}</td>
                     <td>${returnDate}</td>
-                    <td>${statusElement}</td>
+                    <td>${requestStatusElement}</td>
+                    <td>${returnStatusElement}</td>
                 `;
+                console.log('Row HTML:', row.innerHTML);
                 tableBody.appendChild(row);
             });
         }
@@ -405,4 +468,5 @@
         });
     </script>
 </body>
+
 </html>

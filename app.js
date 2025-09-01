@@ -1,6 +1,6 @@
 const express = require('express');
 const mysql = require('mysql');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -205,26 +205,40 @@ app.get('/student/history', (req, res) => {
     res.sendFile(path.join(__dirname, 'student/historystudent.html'));
 });
 
-app.get('/student/history/data', isAuthenticated, isStudent, (req, res) => {
+app.get('/student/history-data', isAuthenticated, isStudent, (req, res) => {
     const borrowerId = req.session.user.userId;
-    console.log('Fetching history for borrowerId:', borrowerId, 'Session:', req.session);
+
     const sql = `
         SELECT 
-            br.request_id, m.model AS motorcycle_name, m.img AS motorcycle_img, u.u_username AS borrower_name,
-            br.borrow_date, br.return_date, br.status AS request_status, br.request_id AS history_id, br.actual_return_date, br.status AS history_status
-        FROM Borrowing_Requests br
-        JOIN Motorcycles m ON br.motorcycle_id = m.motorcycle_id
+            br.request_id,
+            m.model AS motorcycle_name,
+            m.img AS motorcycle_img,
+            u.u_username AS borrower_name,
+            br.borrow_date,
+            br.return_date,
+            br.status AS request_status,
+            ul.u_username AS lender_username,
+            us.u_username AS staff_username
+        FROM borrowing_requests br
+        JOIN motorcycles m ON br.motorcycle_id = m.motorcycle_id
         JOIN user u ON br.borrower_id = u.u_id
-        WHERE br.borrower_id = ? AND br.status IN ('approved', 'disapproved', 'returned')
+        LEFT JOIN user ul ON br.lecturer_id = ul.u_id
+        LEFT JOIN user us ON br.staff_id = us.u_id
+        WHERE br.borrower_id = ?
+          AND br.status IN ('approved', 'disapproved', 'returned')
+        ORDER BY br.borrow_date DESC
     `;
+
     con.query(sql, [borrowerId], (err, result) => {
         if (err) {
-            console.error('Database error:', err.sqlMessage, 'Stack:', err.stack);
+            console.error("SQL error:", err);
             return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
         }
+        console.log('History data for borrower', borrowerId, ':', result); // Debug log
         res.status(200).json({ success: true, history: result });
     });
 });
+
 
 app.get('/student/check-status/:history_id', isAuthenticated, isStudent, (req, res) => {
     const historyId = req.params.history_id;
@@ -256,27 +270,64 @@ app.post('/submit-request', isAuthenticated, isStudent, (req, res) => {
     const { motorcycle_id, borrow_date, return_date, total_price } = req.body;
     const borrower_id = req.session.user.userId;
     const status = 'pending';
+
+    // Validate input fields
     if (!motorcycle_id || !borrow_date || !return_date || total_price === undefined) {
         return res.status(400).json({ success: false, message: 'All fields are required.' });
     }
     if (!validator.isInt(motorcycle_id.toString()) || !validator.isFloat(total_price.toString(), { min: 0 })) {
         return res.status(400).json({ success: false, message: 'Invalid motorcycle ID or total price.' });
     }
-    const checkSql = 'SELECT status FROM Motorcycles WHERE motorcycle_id = ?';
-    con.query(checkSql, [motorcycle_id], (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
-        if (result.length === 0) return res.status(404).json({ success: false, message: 'Motorcycle not found.' });
-        if (result[0].status !== 'available') return res.status(400).json({ success: false, message: 'Motorcycle is not available.' });
-        const insertSql = `
-            INSERT INTO Borrowing_Requests (motorcycle_id, borrower_id, borrow_date, return_date, total_price, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `;
-        con.query(insertSql, [motorcycle_id, borrower_id, borrow_date, return_date, total_price, status], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Database error during request submission.' });
-            const updateSql = 'UPDATE Motorcycles SET status = ? WHERE motorcycle_id = ?';
-            con.query(updateSql, [status, motorcycle_id], (err) => {
-                if (err) return res.status(500).json({ success: false, message: 'Database error updating motorcycle status.' });
-                res.status(201).json({ success: true, message: 'Borrowing request submitted successfully.' });
+
+    // Check if the student already has an active booking
+    const checkActiveBookingSql = `
+        SELECT COUNT(*) as active_bookings 
+        FROM Borrowing_Requests 
+        WHERE borrower_id = ? 
+        AND status IN ('pending', 'approved', 'borrowed')
+    `;
+    con.query(checkActiveBookingSql, [borrower_id], (err, bookingResult) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Database error checking active bookings.' });
+        }
+        if (bookingResult[0].active_bookings > 0) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only book one motorbike at a time. Please wait until your current booking is completed or cancelled.'
+            });
+        }
+
+        // Check motorcycle availability
+        const checkMotorcycleSql = 'SELECT status FROM Motorcycles WHERE motorcycle_id = ?';
+        con.query(checkMotorcycleSql, [motorcycle_id], (err, motorcycleResult) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: 'Database error checking motorcycle status.' });
+            }
+            if (motorcycleResult.length === 0) {
+                return res.status(404).json({ success: false, message: 'Motorcycle not found.' });
+            }
+            if (motorcycleResult[0].status !== 'available') {
+                return res.status(400).json({ success: false, message: 'Motorcycle is not available.' });
+            }
+
+            // Insert the new borrowing request
+            const insertSql = `
+                INSERT INTO Borrowing_Requests (motorcycle_id, borrower_id, borrow_date, return_date, total_price, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+            con.query(insertSql, [motorcycle_id, borrower_id, borrow_date, return_date, total_price, status], (err) => {
+                if (err) {
+                    return res.status(500).json({ success: false, message: 'Database error during request submission.' });
+                }
+
+                // Update motorcycle status to 'pending'
+                const updateSql = 'UPDATE Motorcycles SET status = ? WHERE motorcycle_id = ?';
+                con.query(updateSql, [status, motorcycle_id], (err) => {
+                    if (err) {
+                        return res.status(500).json({ success: false, message: 'Database error updating motorcycle status.' });
+                    }
+                    res.status(201).json({ success: true, message: 'Borrowing request submitted successfully.' });
+                });
             });
         });
     });
@@ -321,17 +372,29 @@ app.get('/staff/history', isAuthenticated, isStaff, (req, res) => {
 });
 
 app.get('/staff/history-data', isAuthenticated, isStaff, (req, res) => {
-    console.log('Fetching staff history, Session:', req.session);
     const sql = `
-        SELECT m.model AS motorcycle_name, u.u_username AS borrower_name, br.borrow_date, br.return_date, 
-               br.status AS request_status, br.actual_return_date, br.status AS status
-        FROM Borrowing_Requests br
-        JOIN Motorcycles m ON br.motorcycle_id = m.motorcycle_id
+        SELECT 
+            br.request_id,
+            m.model AS motorcycle_name,
+            m.img AS motorcycle_img,
+            u.u_username AS borrower_name,
+            br.borrow_date,
+            br.return_date,
+            br.status AS request_status,
+            br.actual_return_date,
+            lender.u_username AS lender_name,
+            staff.u_username AS staff_name
+        FROM borrowing_requests br
+        JOIN motorcycles m ON br.motorcycle_id = m.motorcycle_id
         JOIN user u ON br.borrower_id = u.u_id
+        LEFT JOIN user lender ON br.lecturer_id = lender.u_id
+        LEFT JOIN user staff ON br.staff_id = staff.u_id
+        WHERE br.status IN ('approved', 'disapproved', 'returned')
+        ORDER BY br.borrow_date DESC
     `;
     con.query(sql, (err, result) => {
         if (err) {
-            console.error('Database error:', err.sqlMessage, 'Stack:', err.stack);
+            console.error("SQL error:", err);
             return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
         }
         res.status(200).json({ success: true, history: result });
@@ -411,47 +474,43 @@ app.get('/staff/approved-requests', isAuthenticated, isStaff, (req, res) => {
 app.put('/staff/update-return-status/:request_id', isAuthenticated, isStaff, (req, res) => {
     const requestId = req.params.request_id;
     const { motorcycleId } = req.body;
+    const staffId = req.session.user.userId; // Staff's user ID from session
+
     if (!motorcycleId || !validator.isInt(requestId) || !validator.isInt(motorcycleId.toString())) {
         return res.status(400).json({ success: false, message: 'Valid request ID and motorcycle ID are required.' });
     }
+
     con.beginTransaction((err) => {
         if (err) return res.status(500).json({ success: false, message: 'Transaction error: ' + err.message });
-        const fetchSql = 'SELECT motorcycle_id, borrower_id, borrow_date, return_date FROM Borrowing_Requests WHERE request_id = ?';
+
+        const fetchSql = 'SELECT motorcycle_id FROM Borrowing_Requests WHERE request_id = ?';
         con.query(fetchSql, [requestId], (err, requestResult) => {
             if (err || requestResult.length === 0) {
                 return con.rollback(() => res.status(err ? 500 : 404).json({ success: false, message: err ? 'Database error' : 'Request not found.' }));
             }
-            const { motorcycle_id, borrower_id, borrow_date, return_date } = requestResult[0];
+
+            const { motorcycle_id } = requestResult[0];
             if (parseInt(motorcycleId) !== motorcycle_id) {
                 return con.rollback(() => res.status(400).json({ success: false, message: 'Motorcycle ID mismatch.' }));
             }
-            const updateRequestSql = 'UPDATE Borrowing_Requests SET status = "returned" WHERE request_id = ?';
-            con.query(updateRequestSql, [requestId], (err) => {
-                if (err) return con.rollback(() => res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage }));
+
+            const updateRequestSql = 'UPDATE Borrowing_Requests SET status = "returned", actual_return_date = NOW(), staff_id = ? WHERE request_id = ?';
+            con.query(updateRequestSql, [staffId, requestId], (err) => {
+                if (err) {
+                    return con.rollback(() => res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage }));
+                }
+
                 const updateMotorcycleSql = 'UPDATE Motorcycles SET status = "available" WHERE motorcycle_id = ?';
                 con.query(updateMotorcycleSql, [motorcycle_id], (err) => {
-                    if (err) return con.rollback(() => res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage }));
-                    const updateHistorySql = `
-                        UPDATE History SET actual_return_date = NOW(), status = 'returned' 
-                        WHERE motorcycle_id = ? AND borrower_id = ? AND borrow_date = ? AND return_date = ?
-                    `;
-                    con.query(updateHistorySql, [motorcycle_id, borrower_id, borrow_date, return_date], (err, historyResult) => {
-                        if (err) return con.rollback(() => res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage }));
-                        if (historyResult.affectedRows === 0) {
-                            const insertHistorySql = 'INSERT INTO History (motorcycle_id, borrower_id, borrow_date, return_date, actual_return_date, status) VALUES (?, ?, ?, ?, NOW(), "returned")';
-                            con.query(insertHistorySql, [motorcycle_id, borrower_id, borrow_date, return_date], (err) => {
-                                if (err) return con.rollback(() => res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage }));
-                                con.commit((err) => {
-                                    if (err) return con.rollback(() => res.status(500).json({ success: false, message: 'Commit error: ' + err.message }));
-                                    res.status(200).json({ success: true, message: 'Return status updated successfully.' });
-                                });
-                            });
-                        } else {
-                            con.commit((err) => {
-                                if (err) return con.rollback(() => res.status(500).json({ success: false, message: 'Commit error: ' + err.message }));
-                                res.status(200).json({ success: true, message: 'Return status updated successfully.' });
-                            });
+                    if (err) {
+                        return con.rollback(() => res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage }));
+                    }
+
+                    con.commit((err) => {
+                        if (err) {
+                            return con.rollback(() => res.status(500).json({ success: false, message: 'Commit error: ' + err.message }));
                         }
+                        res.status(200).json({ success: true, message: 'Return status updated successfully.' });
                     });
                 });
             });
@@ -515,29 +574,35 @@ app.get('/lender/get-requests', isAuthenticated, isLender, (req, res) => {
 app.put('/lender/update-request/:request_id', isAuthenticated, isLender, (req, res) => {
     const requestId = req.params.request_id;
     const { status, motorcycleId } = req.body;
+    const lenderId = req.session.user.userId;
+
+    console.log('Lender approving request:', { requestId, status, motorcycleId, lenderId });
+
     if (!status || !motorcycleId || !validator.isInt(requestId) || !validator.isInt(motorcycleId.toString())) {
         return res.status(400).json({ success: false, message: 'Valid status and motorcycle ID are required.' });
     }
+
     const fetchSql = 'SELECT motorcycle_id FROM Borrowing_Requests WHERE request_id = ?';
     con.query(fetchSql, [requestId], (err, result) => {
-        if (err || result.length === 0) return res.status(err ? 500 : 404).json({ success: false, message: err ? 'Database error' : 'Request not found.' });
-        const updateRequestSql = 'UPDATE Borrowing_Requests SET status = ? WHERE request_id = ?';
-        con.query(updateRequestSql, [status, requestId], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
+        if (result.length === 0) return res.status(404).json({ success: false, message: 'Request not found.' });
+
+        if (parseInt(motorcycleId) !== result[0].motorcycle_id) {
+            return res.status(400).json({ success: false, message: 'Motorcycle ID does not match the request.' });
+        }
+
+        const updateRequestSql = `
+            UPDATE Borrowing_Requests 
+            SET status = ?, lecturer_id = ? 
+            WHERE request_id = ?`;
+        con.query(updateRequestSql, [status, lenderId, requestId], (err, updateResult) => {
             if (err) return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
+            console.log('Update result:', updateResult); // Log the result of the update
+
             const newMotorcycleStatus = status === 'approved' ? 'borrowed' : 'available';
             const updateMotorcycleSql = 'UPDATE Motorcycles SET status = ? WHERE motorcycle_id = ?';
             con.query(updateMotorcycleSql, [newMotorcycleStatus, motorcycleId], (err) => {
                 if (err) return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
-                if (status === 'approved') {
-                    const insertHistorySql = `
-                        INSERT INTO History (motorcycle_id, borrower_id, borrow_date, return_date, status)
-                        SELECT motorcycle_id, borrower_id, borrow_date, return_date, 'borrowed'
-                        FROM Borrowing_Requests WHERE request_id = ?
-                    `;
-                    con.query(insertHistorySql, [requestId], (err) => {
-                        if (err) return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
-                    });
-                }
                 res.status(200).json({ success: true, message: 'Request and motorcycle status updated successfully.' });
             });
         });
@@ -549,23 +614,34 @@ app.get('/lender/history', isAuthenticated, isLender, (req, res) => {
 });
 
 app.get('/lender/history-data', isAuthenticated, isLender, (req, res) => {
-    console.log('Fetching lender history, Session:', req.session);
     const sql = `
-        SELECT m.model AS motorcycle_name, m.img AS motorcycle_img, u.u_username AS borrower_name, 
-               br.borrow_date, br.return_date, br.status AS request_status, br.actual_return_date, br.status AS history_status
-        FROM Borrowing_Requests br
-        JOIN Motorcycles m ON br.motorcycle_id = m.motorcycle_id
+        SELECT 
+            br.request_id,
+            m.model AS motorcycle_name,
+            m.img AS motorcycle_img,
+            u.u_username AS borrower_name,
+            br.borrow_date,
+            br.return_date,
+            br.status AS request_status,
+            ul.u_username AS lender_username,
+            us.u_username AS staff_username
+        FROM borrowing_requests br
+        JOIN motorcycles m ON br.motorcycle_id = m.motorcycle_id
         JOIN user u ON br.borrower_id = u.u_id
+        LEFT JOIN user ul ON br.lecturer_id = ul.u_id
+        LEFT JOIN user us ON br.staff_id = us.u_id
         WHERE br.status IN ('approved', 'disapproved', 'returned')
+        ORDER BY br.borrow_date DESC
     `;
     con.query(sql, (err, result) => {
         if (err) {
-            console.error('Database error:', err.sqlMessage, 'Stack:', err.stack);
+            console.error("SQL error:", err);
             return res.status(500).json({ success: false, message: 'Database error: ' + err.sqlMessage });
         }
         res.status(200).json({ success: true, history: result });
     });
 });
+
 
 // General Motorcycle Routes
 app.get('/motorcycles', isAuthenticated, (req, res) => {

@@ -219,61 +219,61 @@
             });
         }
 
-            async function updateRequestStatus(requestId, status, motorcycleId) {
-                try {
-                    const user = await fetchUserInfo(); // Fetch user info to get lender_id
-                    if (!user) {
-                        throw new Error('User not authenticated');
-                    }
+        async function updateRequestStatus(requestId, status, motorcycleId) {
+    try {
+        const user = await fetchUserInfo(); // Fetch user info to get lender_id
+        if (!user) {
+            throw new Error('User not authenticated');
+        }
 
-                    const response = await fetch(`http://localhost:3000/lender/update-request/${requestId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ status, motorcycleId, lenderId: user.userId }) // Include lenderId
-                    });
+        const response = await fetch(`http://localhost:3000/lender/update-request/${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ status, motorcycleId, lenderId: user.userId }) // Include lenderId
+        });
 
-                    const result = await response.json();
-
-                    if (response.ok) {
-                        Swal.fire({
-                            title: 'Success!',
-                            text: `Request ${status.toLowerCase()} successfully.`,
-                            icon: 'success',
-                            confirmButtonText: 'OK',
-                            customClass: {
-                                popup: 'animated-swal',
-                                confirmButton: 'btn btn-primary'
-                            }
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: result.message || 'Failed to update request.',
-                            icon: 'error',
-                            confirmButtonText: 'OK',
-                            customClass: {
-                                popup: 'animated-swal',
-                                confirmButton: 'btn btn-primary'
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error updating request status:", error);
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'An error occurred while updating the request.',
-                        icon: 'error',
-                        confirmButtonText: 'OK',
-                        customClass: {
-                            popup: 'animated-swal',
-                            confirmButton: 'btn btn-primary'
-                        }
-                    });
+        const result = await response.json();
+        
+        if (response.ok) {
+            Swal.fire({
+                title: 'Success!',
+                text: `Request ${status.toLowerCase()} successfully.`,
+                icon: 'success',
+                confirmButtonText: 'OK',
+                customClass: {
+                    popup: 'animated-swal',
+                    confirmButton: 'btn btn-primary'
                 }
+            }).then(() => {
+                window.location.reload();
+            });
+        } else {
+            Swal.fire({
+                title: 'Error!',
+                text: result.message || 'Failed to update request.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                customClass: {
+                    popup: 'animated-swal',
+                    confirmButton: 'btn btn-primary'
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Error updating request status:", error);
+        Swal.fire({
+            title: 'Error!',
+            text: 'An error occurred while updating the request.',
+            icon: 'error',
+            confirmButtonText: 'OK',
+            customClass: {
+                popup: 'animated-swal',
+                confirmButton: 'btn btn-primary'
             }
+        });
+    }
+}
 
         // Logout function
         function logout() {

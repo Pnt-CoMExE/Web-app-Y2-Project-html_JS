@@ -824,6 +824,11 @@
                         });
                     });
                 }
+            }).then((result) => {
+                if (result.isDismissed && (result.dismiss === Swal.DismissReason.cancel || result.dismiss === Swal.DismissReason.close)) {
+                    // Reload the page only when "Close" button or X button is clicked
+                    window.location.reload();
+                }
             });
         }
 
@@ -853,9 +858,11 @@
                     window.location.reload();
                 } else if (result.isDenied) {
                     // "Close" is clicked, do nothing (modal closes automatically)
+                    window.location.reload();
                     return;
                 } else if (result.isDismissed && result.dismiss === Swal.DismissReason.close) {
                     // Close (X) button is clicked, do nothing (modal closes automatically)
+                    window.location.reload();
                     return;
                 }
             });

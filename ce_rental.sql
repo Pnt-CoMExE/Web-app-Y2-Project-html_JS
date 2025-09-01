@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Aug 31, 2025 at 10:28 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Host: localhost
+-- Generation Time: Sep 01, 2025 at 10:28 AM
+-- Server version: 10.4.28-MariaDB
+-- PHP Version: 8.0.28
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -47,7 +47,13 @@ CREATE TABLE `borrowing_requests` (
 INSERT INTO `borrowing_requests` (`request_id`, `motorcycle_id`, `borrower_id`, `lecturer_id`, `staff_id`, `borrow_date`, `return_date`, `actual_return_date`, `status`, `total_price`) VALUES
 (46, 1, 9, 11, 10, '2025-04-22', '2025-04-26', '2025-04-22', 'Returned', 1200.00),
 (47, 1, 9, 1, 2, '2025-04-22', '2025-04-26', '2025-04-22', 'Returned', 1200.00),
-(48, 15, 9, NULL, NULL, '2025-09-02', '2025-09-06', NULL, 'Approved', 4000.00);
+(48, 1, 8, 6, 2, '2025-04-23', '2025-04-25', '2025-04-22', 'Returned', 600.00),
+(49, 1, 8, 6, 2, '2025-04-22', '2025-04-25', '2025-04-22', 'Returned', 900.00),
+(50, 15, 14, 1, 2, '2025-04-23', '2025-04-30', '2025-04-23', 'Returned', 7000.00),
+(51, 4, 9, 11, 2, '2025-04-23', '2025-04-25', '2025-05-19', 'Returned', 1100.00),
+(52, 3, 15, 1, 2, '2025-05-19', '2025-05-22', '2025-05-19', 'Returned', 1200.00),
+(53, 3, 15, NULL, NULL, '2025-05-19', '2025-05-21', NULL, 'Pending', 800.00),
+(54, 1, 5, 6, 2, '2025-06-12', '2025-06-14', '2025-06-12', 'Returned', 600.00);
 
 -- --------------------------------------------------------
 
@@ -70,9 +76,9 @@ CREATE TABLE `motorcycles` (
 --
 
 INSERT INTO `motorcycles` (`motorcycle_id`, `model`, `status`, `img`, `created_by`, `Register`, `price`) VALUES
-(1, 'HONDA Wave 110i', 'borrowed', 'wave110i.png', 2, 'NP-1235', 300.00),
+(1, 'HONDA Wave 110i', 'available', 'wave110i.png', 2, 'NP-1235', 300.00),
 (2, 'HONDA Wave 125i', 'available', 'wave125i.png', 2, 'NB-7349', 200.00),
-(3, 'HONDA Scoopy Urban', 'available', 'scoopyUrban.png', 2, 'JB-1290', 400.00),
+(3, 'HONDA Scoopy Urban', 'pending', 'scoopyUrban.png', 2, 'JB-1290', 400.00),
 (4, 'HONDA PCX 160', 'available', 'Pcx.png', 2, 'UB-8394', 550.00),
 (5, 'YAMAHA FINO', 'available', 'FinoYamaha.png', 2, 'VP-1150', 600.00),
 (6, 'YAMAHA NMAX 125', 'available', 'Nmax.png', 2, 'WV-6200', 650.00),
@@ -80,7 +86,8 @@ INSERT INTO `motorcycles` (`motorcycle_id`, `model`, `status`, `img`, `created_b
 (8, 'VESPA GTS 310', 'available', 'Vespa.png', 2, 'XM-9919', 850.00),
 (9, 'Zontes 368G', 'available', 'Zontes.png', 2, 'ZT-888', 900.00),
 (10, 'Kawasaki Ninja H2R', 'available', 'Ninja.png', 2, 'ZT-678', 1000.00),
-(15, 'Mario', 'borrowed', 'Mario.png', 2, 'MR-123', 1000.00);
+(15, 'Mario', 'disabled', 'Mario.png', 2, 'MR-123', 1000.00),
+(16, 'Mario', 'available', 'wave110i.png', 2, 'MR-123', 500.00);
 
 -- --------------------------------------------------------
 
@@ -105,13 +112,14 @@ INSERT INTO `user` (`u_id`, `u_username`, `u_password`, `u_role`) VALUES
 (5, 'student3', '$2b$10$WzG79aeXJrzNsZql1vunve8YWyeao5WbYw2Rl4pFJEvuIiiGBWMR2', 1),
 (6, 'Kevin', '$2b$10$j9.2y4mLx9BK78Ebs4Ejve8DQVTZ8eGKMqcMilw892lYXnKINRsw.', 3),
 (7, 'jame', '$2b$10$jIjxkfboVbHhbbpr9u7CROyz.vPEB7E7Mm7oZpfnULoe54WOERmI2', 2),
-(8, 'Kevinn', '$2b$10$D1Jnxjjl21gkyVojHg3SaO07y224iEGYHu7pK2.X.BQzZxjK4kOti', 1),
+(8, 'Kevinn', '$2b$10$j9.2y4mLx9BK78Ebs4Ejve8DQVTZ8eGKMqcMilw892lYXnKINRsw.', 1),
 (9, 'Com', '$2b$10$tygsvFr1IFW0oKXvNAwMA.gYF8BIadUebAyfTxVi3qqTGAU/Q7/AC', 1),
 (10, 'Pub', '$2b$10$zUP4dvIYsENTrNEOfBx7YuFpuB6SoCQqgW6GxPBYBVMoBhrCSHBRq', 2),
 (11, 'C', '$2b$10$mxVU9wdSjvlVYaBUX.srPuT0ZrttG/mMWK16x5ge6nNcWkTLP29FC', 3),
 (12, 'Prae', '$2b$10$Oq/XUpbrXOx83SnTB/SbOufSG.V9g1neEO5oL4zrdimG59gyZujCe', 1),
 (13, 'Sali', '$2b$10$ms7xZve6kxdUqYTECkEUyeT45qnae0RQiNBL9qgkOVnGynSAmNyl.', 1),
-(14, 'Cz', '$2b$10$Hvq.cAy6VkOfGS7ZLRJ9NOF3/b1b8UjljdDjeFxOZd8c9/noq9t26', 3);
+(14, 'khao', '$2b$10$drzWkUBw8b6uCfidoHjMC.haWU1Md2jqeKfG4.Q6VAEp2Vvj7Ng/O', 1),
+(15, 'pupu', '$2b$10$wY6XohhSZGh6ttCdHYUXrOyqdQ1grtrMMF52oJCNxd066AknQ6ZVe', 1);
 
 --
 -- Indexes for dumped tables
@@ -145,19 +153,19 @@ ALTER TABLE `user`
 -- AUTO_INCREMENT for table `borrowing_requests`
 --
 ALTER TABLE `borrowing_requests`
-  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
 
 --
 -- AUTO_INCREMENT for table `motorcycles`
 --
 ALTER TABLE `motorcycles`
-  MODIFY `motorcycle_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `motorcycle_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `user`
 --
 ALTER TABLE `user`
-  MODIFY `u_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `u_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- Constraints for dumped tables

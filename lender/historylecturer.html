@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,32 +9,18 @@
     <link rel="stylesheet" href="../bootstrap5/css/sweetalert2.min.css">
     <script src="../bootstrap5/js/sweetalert2.all.min.js"></script>
     <link rel="stylesheet" href="stylelender.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- Font Awesome for icons -->
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Reset default styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
             font-family: Arial, sans-serif;
             color: #333;
             line-height: 1.6;
         }
-
-        /* Main Content */
-        .header {
-            background-color: #D64545;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
         .container {
             width: auto;
             margin: 20px auto;
@@ -44,65 +29,72 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
-
         th, td {
             padding: 12px;
             text-align: center;
-            border-bottom: 1px solid #ddd;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
         }
-
         thead {
             background-color: #2c3e50;
             color: white;
         }
-
+        th {
+            font-weight: 600;
+        }
+        td {
+            background-color: #fff;
+        }
         tbody tr:nth-child(even) {
             background-color: #F5F5F5;
         }
-
-        /* Status badges */
         .status {
             padding: 8px 15px;
             border-radius: 25px;
             font-weight: bold;
             text-transform: uppercase;
             display: inline-block;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
         }
-
         .approved {
             background-color: #28a745;
             color: white;
         }
-
         .pending {
             background-color: #ffc107;
             color: black;
         }
-
         .disapproved {
             background-color: #dc3545;
             color: white;
+            cursor: default;
         }
-
         .returned {
-            background-color: gray;
+            background-color: #6c757d;
             color: white;
         }
-
-        /* Image styling */
         .motorcycle-img {
-            max-height: 50px;
-            object-fit: contain;
+            width: 100px;
+            height: auto;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        th:nth-child(6),
+        td:nth-child(6),
+        th:nth-child(7),
+        td:nth-child(7) {
+            white-space: nowrap;
+            min-width: 200px;
         }
     </style>
 </head>
-
 <body>
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg">
@@ -110,12 +102,10 @@
             aria-controls="navbarsExample11" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-
         <div class="navbar-brand col-lg-2 me-0 text-white justify-content-lg-start d-flex">
             <img src="../img/icon/motorcycleLogo.png" alt="motorbike" style="height: 30px;">
             <h4 class="mx-1">CE Rental</h4>
         </div>
-
         <div class="collapse navbar-collapse d-lg-flex justify-content-lg-end" id="navbarsExample11">
             <ul class="navbar-nav col-lg-8">
                 <li class="nav-item">
@@ -132,19 +122,16 @@
                 </li>
             </ul>
         </div>
-
         <div class="d-lg-flex col-lg-2 align-items-center">
             <span class="username-display text-white" id="usernameDisplay">Welcome, Guest!</span>
             <button class="logout btn btn-danger ms-3" onclick="logout()">Log out</button>
         </div>
     </nav>
-
     <section class="card" id="collection">
         <div class="card-header bg-gradient-primary text-white d-flex">
             <img src="../img/icon/history.png" alt="motorbike" style="height: 25px;">
             <h4 class="mb-0 mx-2"><i></i> History</h4>
         </div>
-
         <div class="m-5">
             <table>
                 <thead>
@@ -154,7 +141,8 @@
                         <th>Name</th>
                         <th>Date</th>
                         <th>Return</th>
-                        <th>Status</th>
+                        <th>Request Status</th>
+                        <th>Return Status</th>
                     </tr>
                 </thead>
                 <tbody id="historyTable">
@@ -163,7 +151,6 @@
             </table>
         </div>
     </section>
-
     <script>
         // Fetch and display username
         async function fetchUserInfo() {
@@ -172,18 +159,13 @@
                     method: 'GET',
                     credentials: 'include'
                 });
-
                 if (!response.ok) {
                     if (response.status === 401) {
                         Swal.fire({
                             title: 'Error!',
                             text: 'You need to log in to access this page.',
                             icon: 'error',
-                            confirmButtonText: 'OK',
-                            customClass: {
-                                popup: 'animated-swal',
-                                confirmButton: 'btn btn-primary'
-                            }
+                            confirmButtonText: 'OK'
                         }).then(() => {
                             window.location.href = '/';
                         });
@@ -191,7 +173,6 @@
                     }
                     throw new Error('Network response was not ok');
                 }
-
                 const result = await response.json();
                 return { username: result.username, userId: result.userId, role: result.role };
             } catch (error) {
@@ -200,16 +181,11 @@
                     title: 'Error!',
                     text: 'Failed to load user information. Please try again later.',
                     icon: 'error',
-                    confirmButtonText: 'OK',
-                    customClass: {
-                        popup: 'animated-swal',
-                        confirmButton: 'btn btn-primary'
-                    }
+                    confirmButtonText: 'OK'
                 });
                 return null;
             }
         }
-
         async function displayUsername() {
             const user = await fetchUserInfo();
             if (user) {
@@ -218,7 +194,6 @@
             }
             return null;
         }
-
         // Fetch and display history
         async function loadHistory() {
             try {
@@ -226,11 +201,9 @@
                     method: 'GET',
                     credentials: 'include'
                 });
-
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-
                 const data = await response.json();
                 if (data.success) {
                     displayHistory(data.history);
@@ -243,115 +216,97 @@
                     title: 'Error!',
                     text: 'Failed to load history. Please try again later.',
                     icon: 'error',
-                    confirmButtonText: 'OK',
-                    customClass: {
-                        popup: 'animated-swal',
-                        confirmButton: 'btn btn-primary'
-                    }
+                    confirmButtonText: 'OK'
                 }).then(() => {
-                    // Reload page on OK click
                     window.location.reload();
                 });
             }
         }
-
         function displayHistory(history) {
             const table = document.getElementById('historyTable');
             table.innerHTML = '';
             if (!history || history.length === 0) {
-                table.innerHTML = '<tr><td colspan="6">No history records found.</td></tr>';
+                table.innerHTML = '<tr><td colspan="7">No history records found.</td></tr>';
                 return;
             }
             history.forEach(item => {
-                const statusClass = item.request_status.toLowerCase().replace(' ', '-'); // Replace spaces with hyphens for class names
+                console.log('History item:', item);
+                const statusLower = item.request_status.toLowerCase();
+                // Request Status column (APPROVED or DISAPPROVED by lender)
+                let requestStatusText = '-';
+                let requestStatusClass = '';
+                if (statusLower === 'approved') {
+                    requestStatusText = item.lender_username ? `APPROVED by ${item.lender_username}` : 'APPROVED by Unknown';
+                    requestStatusClass = 'approved';
+                    if (!item.lender_username) {
+                        console.warn(`Missing lender_username for approved request ID ${item.request_id}`);
+                    }
+                } else if (statusLower === 'disapproved') {
+                    requestStatusText = item.lender_username ? `DISAPPROVED by ${item.lender_username}` : 'DISAPPROVED by Unknown';
+                    requestStatusClass = 'disapproved';
+                    if (!item.lender_username) {
+                        console.warn(`Missing lender_username for disapproved request ID ${item.request_id}`);
+                    }
+                }
+                const requestStatusElement = `<span class="status ${requestStatusClass}">${requestStatusText}</span>`;
+                // Return Status column (RETURNED by staff)
+                let returnStatusText = statusLower === 'returned' && item.staff_username ? `RETURNED by ${item.staff_username}` : '-';
+                let returnStatusClass = statusLower === 'returned' ? 'returned' : '';
+                const returnStatusElement = `<span class="status ${returnStatusClass}">${returnStatusText}</span>`;
                 const row = `
                     <tr>
-                        <td><img src="../img/motorcycle/${item.motorcycle_img}" alt="${item.motorcycle_name}" class="motorcycle-img" style="height: 50px; object-fit: contain;"></td>
+                        <td><img src="../img/motorcycle/${item.motorcycle_img}" alt="${item.motorcycle_name}" class="motorcycle-img"></td>
                         <td>${item.motorcycle_name || 'N/A'}</td>
                         <td>${item.borrower_name || 'N/A'}</td>
                         <td>${item.borrow_date ? new Date(item.borrow_date).toLocaleDateString('en-US') : 'N/A'}</td>
                         <td>${item.return_date ? new Date(item.return_date).toLocaleDateString('en-US') : 'N/A'}</td>
-                        <td><span class="status ${statusClass}">${item.request_status || 'N/A'}</span></td>
+                        <td>${requestStatusElement}</td>
+                        <td>${returnStatusElement}</td>
                     </tr>`;
                 table.innerHTML += row;
             });
         }
-
         // Logout function
-        function logout() {
-            Swal.fire({
-                title: 'Are you sure?',
-                text: 'You will be logged out and redirected to the login page.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, Logout!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('http://localhost:3000/logout', {
-                        method: 'POST',
-                        credentials: 'include'
-                    }).then(response => {
-                        if (response.ok) {
-                            Swal.fire({
-                                title: 'Logged Out!',
-                                text: 'Redirecting to login page...',
-                                icon: 'success',
-                                timer: 1500,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.href = "/views/Login.html";
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Error!',
-                                text: 'Failed to log out.',
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    }).catch(error => {
-                        console.error('Logout error:', error);
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'An error occurred during logout.',
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
+        async function logout() {
+            try {
+                const response = await fetch('http://localhost:3000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Logged Out!',
+                        text: 'Redirecting to login page...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to log out.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
                     });
                 }
-            });
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while logging out. Please try again later.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
         }
-
         // Load content when page is ready
         document.addEventListener("DOMContentLoaded", async () => {
             await displayUsername();
             await loadHistory();
         });
-
-        // Custom CSS for SweetAlert
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .animated-swal {
-                border-radius: 15px;
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-                animation: fadeIn 0.3s ease-in-out;
-            }
-            @keyframes fadeIn {
-                from { opacity: 0; transform: scale(0.95); }
-                to { opacity: 1; transform: scale(1); }
-            }
-            .swal2-html-container {
-                max-height: 400px;
-                overflow-y: auto;
-            }
-            .swal2-confirm, .swal2-cancel {
-                border-radius: 10px !important;
-                padding: 8px 20px !important;
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </body>
-
 </html>
