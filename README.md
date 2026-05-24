@@ -68,9 +68,9 @@ Import the SQL file to create the database and tables:
 mysql -u root -p < ce_rental.sql
 ```
 
-### 4. Configure environment variables
+### 4. Configure database connection
 
-Create a `.env` file in the project root (or edit `config/db.js` directly):
+Create a `.env` file in the project root with your database credentials:
 
 ```env
 DB_HOST=localhost
@@ -81,10 +81,18 @@ SESSION_SECRET=your-session-secret
 PORT=3000
 ```
 
+> **Note:** The `config/db.js` file is gitignored (it contains credentials). You can either let the app read from `.env` (recommended) or create `config/db.js` manually using the `config/db.example.js` template if available.
+
 ### 5. Start the server
 
+**Development (with auto-reload):**
 ```bash
 npm run dev
+```
+
+**Production:**
+```bash
+npm start
 ```
 
 The server will start at **http://localhost:3000**.
